@@ -3,12 +3,10 @@ package pgparty
 import (
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/covrom/pgparty/utils"
 )
 
-// Класс, описывающий модель, которая используется в Store
 type ModelDesc struct {
 	modelType reflect.Type
 	storeName string
@@ -98,15 +96,13 @@ func (md *ModelDesc) init() error {
 		return err
 	}
 
+	// fill shortcuts
 	for i := range columns {
 		column := &columns[i]
-
-		// fill shortcuts
 		if _, ok := columnByName[column.Name]; ok {
 			return fmt.Errorf("column name not uniq: '%s'", column.Name)
 		}
 		columnByName[column.Name] = column
-
 		columnByFieldName[column.StructField.Name] = column
 		if jsonName := utils.JsonFieldName(column.StructField); len(jsonName) > 0 {
 			columnByJsonName[jsonName] = column
@@ -141,8 +137,13 @@ func (md *ModelDesc) init() error {
 	return nil
 }
 
-// Создает новую модель и заполняет поля
-func NewModelDescription(modelType reflect.Type, storeName, schema string) (*ModelDesc, error) {
+func NewModelDescription[T Storable](m T, schema string) (*ModelDesc, error) {
+	value := reflect.Indirect(reflect.ValueOf(m))
+	if value.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("only structs are supported: %s is not a struct", value.Type())
+	}
+	modelType := value.Type()
+	storeName := m.StoreName()
 	modelDescription := ModelDesc{
 		modelType: modelType,
 		storeName: storeName,
@@ -162,7 +163,7 @@ func fillColumns(typ reflect.Type, columns *[]FieldDescription) error {
 	}
 
 	if typ.Kind() != reflect.Struct {
-		return nil
+		return fmt.Errorf("%s not a struct or a pointer to struct", typ.String())
 	}
 
 	for i := 0; i < typ.NumField(); i++ {
@@ -178,61 +179,9 @@ func fillColumns(typ reflect.Type, columns *[]FieldDescription) error {
 			continue
 		}
 
-		fieldName := structField.Name
-
-		// только так, т.к. эта же функция будет использоваться для распознавания имен полей БД
-		name := ToSnakeCase2(fieldName)
-		dbtag := structField.Tag.Get(TagDBName)
-		if len(dbtag) > 0 {
-			if dbtag == "-" {
-				continue
-			}
-			name = dbtag
+		if column := NewFieldDescription(structField); column != nil {
+			*columns = append(*columns, *column)
 		}
-
-		elemType := structField.Type
-		switch elemType.Kind() {
-		case reflect.Ptr, reflect.Slice:
-			elemType = elemType.Elem()
-		}
-
-		var fullTextEnabled bool
-
-		switch strings.ToLower(structField.Tag.Get(TagFullText)) {
-		case "true", "enabled", "yes", "on", "1":
-			fullTextEnabled = true
-		}
-
-		column := FieldDescription{
-			StructField: structField,
-			ElemType:    elemType,
-			Name:        name,
-			JsonName:    utils.JsonFieldName(structField),
-			Skip:        structField.Tag.Get(TagStore) == "-",
-			SkipReplace: structField.Type == reflect.TypeOf(BigSerial{}),
-			Nullable: structField.Type.Kind() == reflect.Ptr ||
-				structField.Type == reflect.TypeOf(NullTime{}) ||
-				structField.Type == reflect.TypeOf(NullDecimal{}) ||
-				structField.Type == reflect.TypeOf(NullBool{}) ||
-				structField.Type == reflect.TypeOf(NullFloat64{}) ||
-				structField.Type == reflect.TypeOf(NullInt64{}) ||
-				structField.Type == reflect.TypeOf(BigSerial{}) ||
-				structField.Type == reflect.TypeOf(NullText{}) ||
-				structField.Type == reflect.TypeOf(NullJsonB{}) ||
-				structField.Type == reflect.TypeOf(NullString{}),
-			FullTextEnabled: fullTextEnabled,
-		}
-
-		nlbl := structField.Tag.Get("nullable")
-		if nlbl != "" {
-			if _, err := fmt.Fscanf(strings.NewReader(nlbl), "%t", &column.Nullable); err != nil {
-				return err
-			}
-		}
-
-		column.Skip = structField.Tag.Get(TagStore) == "-"
-
-		*columns = append(*columns, column)
 	}
 
 	return nil

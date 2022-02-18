@@ -34,7 +34,7 @@ func (sr *PgStore) PrepareQuery(ctx context.Context, query string) (string, erro
 	return res, nil
 }
 
-func Get[T any](ctx context.Context, query string, dest *T, args ...interface{}) error {
+func Get[T Storable](ctx context.Context, query string, dest *T, args ...interface{}) error {
 	st := PgStoreFromContext(ctx)
 	if st == nil {
 		_, file, no, ok := runtime.Caller(1)
@@ -77,7 +77,7 @@ func (sr *PgStore) PrepGet(ctx context.Context, query string, dest interface{}, 
 	return err
 }
 
-func Select[T any](ctx context.Context, query string, dest *[]T, args ...interface{}) error {
+func Select[T Storable](ctx context.Context, query string, dest *[]T, args ...interface{}) error {
 	st := PgStoreFromContext(ctx)
 	if st == nil {
 		_, file, no, ok := runtime.Caller(1)
@@ -204,7 +204,7 @@ func (sr *PgStore) PrepQueryx(ctx context.Context, query string, args ...interfa
 	return res, err
 }
 
-func SelectCursorWalk[T any](ctx context.Context, cursorName, selectQuery string, destSlice *[]T, fetchSize int,
+func SelectCursorWalk[T Storable](ctx context.Context, cursorName, selectQuery string, destSlice *[]T, fetchSize int,
 	f func(destSlice interface{}) error, args ...interface{}) error {
 	st := PgStoreFromContext(ctx)
 	if st == nil {

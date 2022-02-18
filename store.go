@@ -1,7 +1,6 @@
 package pgparty
 
 import (
-	"fmt"
 	"log"
 	"reflect"
 )
@@ -55,16 +54,12 @@ func (s Store) GetModelDescriptionByType(typ reflect.Type) (*ModelDesc, bool) {
 // Добавление описания модели в хранилище. Хранилище может дальше работать с типами моделей, которые были зарегистрированы.
 func (s *Store) RegisterModels(sts ...Storable) error {
 	for _, st := range sts {
-		value := reflect.Indirect(reflect.ValueOf(st))
-		if value.Kind() != reflect.Struct {
-			return fmt.Errorf("only structs are supported: %s is not a struct", value.Type())
-		}
 
 		shn := ""
 		if v, ok := st.(Schemable); ok {
 			shn = v.SchemaName()
 		}
-		md, err := NewModelDescription(value.Type(), st.StoreName(), shn)
+		md, err := NewModelDescription(st, shn)
 		if err != nil {
 			return err
 		}
