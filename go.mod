@@ -1,6 +1,6 @@
 module github.com/covrom/pgparty
 
-go 1.17
+go 1.18
 
 require (
 	github.com/covrom/rustime v1.0.1
