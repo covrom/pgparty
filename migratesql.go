@@ -6,7 +6,6 @@ import (
 	"log"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/covrom/pgparty/modelcols"
@@ -25,48 +24,24 @@ func Field2SQLColumn(f FieldDescription) (modelcols.SQLColumn, modelcols.SQLInde
 		// Table:      tname,
 		ColName:    f.Name,
 		NotNull:    !f.Nullable,
-		PrimaryKey: f.StructField.Name == IDField,
-	}
-
-	if _, ok := fld.Tag.Lookup(TagPK); ok {
-		sqc.PrimaryKey = true
+		PrimaryKey: f.PK,
 	}
 
 	var sqci modelcols.SQLIndexes
 
-	// тэг len для строк и decimal
-	ln := 150
-	if lns, ok := fld.Tag.Lookup(TagLen); ok && len(lns) > 0 {
-		var err error
-		ln, err = strconv.Atoi(lns)
-		if err != nil || ln <= 0 {
-			return sqc, nil, fmt.Errorf("bad len tag: %s", err)
-		}
-	}
-
-	// тэг prec для decimal
-	prec := 2
-	if precs, ok := fld.Tag.Lookup(TagPrec); ok && len(precs) > 0 {
-		var err error
-		prec, err = strconv.Atoi(precs)
-		if err != nil {
-			return sqc, nil, fmt.Errorf("bad len tag: %s", err)
-		}
-	}
-
 	// можно применять тэг "sql" для определения типа данных в sql
-	if tname, ok := fld.Tag.Lookup(TagSql); ok && len(tname) > 0 {
-		sqc.DataType = tname
+	if len(f.SQLTypeDef) > 0 {
+		sqc.DataType = f.SQLTypeDef
 	} else {
-		sqt := SQLType(ft, ln, prec)
+		sqt := SQLType(ft, f.Ln, f.Prec)
 		if len(sqt) == 0 {
 			return sqc, nil, fmt.Errorf("sql type not defined for type %v", ft)
 		}
 		sqc.DataType = sqt
 	}
 
-	if dv, ok := fld.Tag.Lookup(TagDefVal); ok && len(dv) > 0 {
-		sqc.DefaultValue = dv
+	if len(f.DefVal) > 0 {
+		sqc.DefaultValue = f.DefVal
 	} else if sqc.NotNull && !sqc.PrimaryKey {
 		if dv, ok := defaultSQLValues[ft]; ok {
 			sqc.DefaultValue = dv
@@ -75,89 +50,83 @@ func Field2SQLColumn(f FieldDescription) (modelcols.SQLColumn, modelcols.SQLInde
 		}
 	}
 
-	if indexes, ok := fld.Tag.Lookup(TagKey); ok && len(indexes) > 0 {
-		for _, idx := range strings.Split(indexes, ",") {
-			if len(idx) > 0 {
-				idxParts := strings.Split(idx, " ")
-				sqi := modelcols.SQLIndex{
-					Columns: []string{f.Name},
-				}
-				for i, pi := range idxParts {
-					if i == 0 {
-						sqi.Name = strings.ToLower(pi)
-					} else {
-						switch strings.ToLower(pi) {
-						case "concurrently":
-							sqi.Concurrently = true
-						case "unique":
-							sqi.IsUnique = true
-						case "btree", "hash", "gist", "spgist", "gin", "brin":
-							sqi.MethodName = pi
-						default:
-							if len(sqi.Options) > 0 {
-								sqi.Options += " "
-							}
-							sqi.Options = sqi.Options + pi
-						}
-					}
-				}
-				sqci = append(sqci, sqi)
+	for _, idx := range f.Indexes {
+		if len(idx) > 0 {
+			idxParts := strings.Split(idx, " ")
+			sqi := modelcols.SQLIndex{
+				Columns: []string{f.Name},
 			}
-		}
-	}
-
-	if ginIndex, ok := fld.Tag.Lookup(TagGinKey); ok && len(ginIndex) > 0 {
-		for _, idx := range strings.Split(ginIndex, ",") {
-			if len(idx) > 0 {
-				idxParts := strings.Split(idx, " ")
-				sqi := modelcols.SQLIndex{
-					Columns:    []string{f.Name},
-					MethodName: "gin",
-				}
-				for i, pi := range idxParts {
-					if i == 0 {
-						sqi.Name = strings.ToLower(pi)
-					} else {
+			for i, pi := range idxParts {
+				if i == 0 {
+					sqi.Name = strings.ToLower(pi)
+				} else {
+					switch strings.ToLower(pi) {
+					case "concurrently":
+						sqi.Concurrently = true
+					case "unique":
+						sqi.IsUnique = true
+					case "btree", "hash", "gist", "spgist", "gin", "brin":
+						sqi.MethodName = pi
+					default:
 						if len(sqi.Options) > 0 {
 							sqi.Options += " "
 						}
 						sqi.Options = sqi.Options + pi
 					}
 				}
-				sqci = append(sqci, sqi)
 			}
+			sqci = append(sqci, sqi)
 		}
 	}
 
-	if uniIndex, ok := fld.Tag.Lookup(TagUniqueKey); ok && len(uniIndex) > 0 {
-		for _, idx := range strings.Split(uniIndex, ",") {
-			if len(idx) > 0 {
-				idxParts := strings.Split(idx, " ")
-				sqi := modelcols.SQLIndex{
-					Columns:  []string{f.Name},
-					IsUnique: true,
+	for _, idx := range f.GinIndexes {
+		if len(idx) > 0 {
+			idxParts := strings.Split(idx, " ")
+			sqi := modelcols.SQLIndex{
+				Columns:    []string{f.Name},
+				MethodName: "gin",
+			}
+			for i, pi := range idxParts {
+				if i == 0 {
+					sqi.Name = strings.ToLower(pi)
+				} else {
+					if len(sqi.Options) > 0 {
+						sqi.Options += " "
+					}
+					sqi.Options = sqi.Options + pi
 				}
-				for i, pi := range idxParts {
-					if i == 0 {
-						sqi.Name = strings.ToLower(pi)
-					} else {
-						switch strings.ToLower(pi) {
-						case "concurrently":
-							sqi.Concurrently = true
-						case "unique":
-							sqi.IsUnique = true
-						case "btree", "hash", "gist", "spgist", "gin", "brin":
-							sqi.MethodName = pi
-						default:
-							if len(sqi.Options) > 0 {
-								sqi.Options += " "
-							}
-							sqi.Options = sqi.Options + pi
+			}
+			sqci = append(sqci, sqi)
+		}
+	}
+
+	for _, idx := range f.UniqIndexes {
+		if len(idx) > 0 {
+			idxParts := strings.Split(idx, " ")
+			sqi := modelcols.SQLIndex{
+				Columns:  []string{f.Name},
+				IsUnique: true,
+			}
+			for i, pi := range idxParts {
+				if i == 0 {
+					sqi.Name = strings.ToLower(pi)
+				} else {
+					switch strings.ToLower(pi) {
+					case "concurrently":
+						sqi.Concurrently = true
+					case "unique":
+						sqi.IsUnique = true
+					case "btree", "hash", "gist", "spgist", "gin", "brin":
+						sqi.MethodName = pi
+					default:
+						if len(sqi.Options) > 0 {
+							sqi.Options += " "
 						}
+						sqi.Options = sqi.Options + pi
 					}
 				}
-				sqci = append(sqci, sqi)
 			}
+			sqci = append(sqci, sqi)
 		}
 	}
 

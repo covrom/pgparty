@@ -3,6 +3,7 @@ package pgparty
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/covrom/pgparty/utils"
@@ -15,10 +16,18 @@ type FieldDescription struct {
 	ElemType        reflect.Type        // тип элемента, который характеризует структура
 	Name            string              // store name (имя в хранилище)
 	JsonName        string
+	Ln              int
+	Prec            int
+	SQLTypeDef      string
+	DefVal          string
+	Indexes         []string
+	GinIndexes      []string
+	UniqIndexes     []string
 	Nullable        bool
 	Skip            bool
 	SkipReplace     bool // игнорится только при реплейсе
 	FullTextEnabled bool
+	PK              bool
 }
 
 func NewFieldDescription(structField reflect.StructField) *FieldDescription {
@@ -64,19 +73,58 @@ func NewFieldDescription(structField reflect.StructField) *FieldDescription {
 			structField.Type == reflect.TypeOf(NullJsonB{}) ||
 			structField.Type == reflect.TypeOf(NullString{}),
 		FullTextEnabled: fullTextEnabled,
+		PK:              structField.Name == IDField,
 	}
 
-	nlbl := structField.Tag.Get("nullable")
-	if nlbl != "" {
-		switch strings.ToLower(nlbl) {
-		case "true", "enabled", "yes", "on", "1":
-			column.Nullable = true
-		case "false", "disabled", "no", "off", "0":
-			column.Nullable = false
-		}
+	switch strings.ToLower(structField.Tag.Get("nullable")) {
+	case "true", "enabled", "yes", "on", "1":
+		column.Nullable = true
+	case "false", "disabled", "no", "off", "0":
+		column.Nullable = false
 	}
 
 	column.Skip = structField.Tag.Get(TagStore) == "-"
+
+	if v, ok := structField.Tag.Lookup(TagPK); ok {
+		column.PK = v != "-"
+	}
+
+	// тэг len для строк и decimal
+	column.Ln = 150
+	if lns, ok := structField.Tag.Lookup(TagLen); ok && len(lns) > 0 {
+		if ln, err := strconv.Atoi(lns); err == nil {
+			column.Ln = ln
+		}
+	}
+
+	// тэг prec для decimal
+	column.Prec = 2
+	if precs, ok := structField.Tag.Lookup(TagPrec); ok && len(precs) > 0 {
+		if prec, err := strconv.Atoi(precs); err == nil {
+			column.Prec = prec
+		}
+	}
+
+	if tname, ok := structField.Tag.Lookup(TagSql); ok && len(tname) > 0 {
+		column.SQLTypeDef = tname
+	}
+
+	if dv, ok := structField.Tag.Lookup(TagDefVal); ok && len(dv) > 0 {
+		column.DefVal = dv
+	}
+
+	if indexes, ok := structField.Tag.Lookup(TagKey); ok && len(indexes) > 0 {
+		column.Indexes = strings.Split(indexes, ",")
+	}
+
+	if ginIndex, ok := structField.Tag.Lookup(TagGinKey); ok && len(ginIndex) > 0 {
+		column.GinIndexes = strings.Split(ginIndex, ",")
+	}
+
+	if uniIndex, ok := structField.Tag.Lookup(TagUniqueKey); ok && len(uniIndex) > 0 {
+		column.UniqIndexes = strings.Split(uniIndex, ",")
+	}
+
 	return &column
 }
 
