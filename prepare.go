@@ -13,11 +13,11 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// Prepare подготавливает запрос, в котором могут быть указаны имена моделей из языка го &ModelName или полей :FieldName, :ModelName.FieldName
+// PrepareQuery подготавливает запрос, в котором могут быть указаны имена моделей из языка го &ModelName или полей :FieldName, :ModelName.FieldName
 // Имя таблицы many-2-many связи подставляется по шаблону &ModelName.Many2ManyFieldName, в ней два id-поля по шаблону :ModelName1_id и :ModelName2_id
 // Prepare всегда делается на уровне базы, поэтому, нужно всегдла явно затаскивать его в контекст нужной транзакции через tx.Stmtx(psql)
 // Можно вызывать Prepare сколько угодно раз, но реально рассчитываться он будет один раз, в остальные разы будет браться из кэша.
-func (sr *PgStore) Prepare(ctx context.Context, query string) (string, error) {
+func (sr *PgStore) PrepareQuery(ctx context.Context, query string) (string, error) {
 	schema, _ := CurrentSchemaFromContext(ctx)
 
 	repls, _, err := sr.AnalyzeAndReplaceQuery(query, schema)
@@ -34,12 +34,7 @@ func (sr *PgStore) Prepare(ctx context.Context, query string) (string, error) {
 	return res, nil
 }
 
-// Закрытие stmt происходит в момент commit или rollback
-func (sr *PgStore) PrepareQuery(ctx context.Context, query string) (string, error) {
-	return sr.Prepare(ctx, query)
-}
-
-func PrepGet(ctx context.Context, query string, dest interface{}, args ...interface{}) error {
+func Get[T any](ctx context.Context, query string, dest *T, args ...interface{}) error {
 	st := PgStoreFromContext(ctx)
 	if st == nil {
 		_, file, no, ok := runtime.Caller(1)
@@ -82,7 +77,7 @@ func (sr *PgStore) PrepGet(ctx context.Context, query string, dest interface{}, 
 	return err
 }
 
-func PrepSelect(ctx context.Context, query string, dest interface{}, args ...interface{}) error {
+func Select[T any](ctx context.Context, query string, dest *[]T, args ...interface{}) error {
 	st := PgStoreFromContext(ctx)
 	if st == nil {
 		_, file, no, ok := runtime.Caller(1)
@@ -126,7 +121,7 @@ func (sr *PgStore) PrepSelect(ctx context.Context, query string, dest interface{
 	return err
 }
 
-func PrepExec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+func Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	st := PgStoreFromContext(ctx)
 	if st == nil {
 		_, file, no, ok := runtime.Caller(1)
@@ -169,7 +164,7 @@ func (sr *PgStore) PrepExec(ctx context.Context, query string, args ...interface
 	return res, err
 }
 
-func PrepQueryx(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
+func Query(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
 	st := PgStoreFromContext(ctx)
 	if st == nil {
 		_, file, no, ok := runtime.Caller(1)
@@ -209,7 +204,7 @@ func (sr *PgStore) PrepQueryx(ctx context.Context, query string, args ...interfa
 	return res, err
 }
 
-func PrepSelectCursorWalk(ctx context.Context, cursorName, selectQuery string, destSlice interface{}, fetchSize int,
+func SelectCursorWalk[T any](ctx context.Context, cursorName, selectQuery string, destSlice *[]T, fetchSize int,
 	f func(destSlice interface{}) error, args ...interface{}) error {
 	st := PgStoreFromContext(ctx)
 	if st == nil {

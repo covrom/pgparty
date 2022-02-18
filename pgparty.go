@@ -42,12 +42,12 @@ type PgStore struct {
 	trace bool
 }
 
-func NewPgStore(db *sqlx.DB, sname string) *PgStore {
+func NewPgStore(db *sqlx.DB) *PgStore {
 	ret := &PgStore{
 		db: db,
 	}
 
-	ret.Init(sname)
+	ret.Init()
 
 	return ret
 }
