@@ -7,6 +7,42 @@ import (
 	"github.com/covrom/pgparty/utils"
 )
 
+func Register[T Storable](st *Store, schema string, m T) error {
+	value := reflect.Indirect(reflect.ValueOf(m))
+	if value.Kind() != reflect.Struct {
+		return fmt.Errorf("only structs are supported: %s is not a struct", value.Type())
+	}
+	modelType := value.Type()
+	storeName := m.StoreName()
+
+	md := &ModelDesc{
+		modelType: modelType,
+		storeName: storeName,
+		schema:    schema,
+	}
+
+	if err := md.init(); err != nil {
+		return fmt.Errorf("init ModelDesc failed: %s", err)
+	}
+
+	if mds, ok := st.modelDescriptions[md.schema]; ok {
+		mds[md.ModelType()] = md
+	} else {
+		st.modelDescriptions[md.schema] = make(map[reflect.Type]*ModelDesc)
+		st.modelDescriptions[md.schema][md.ModelType()] = md
+	}
+
+	mdrepls, rpls, err := ReplaceEntries(md)
+	if err != nil {
+		return err
+	}
+	for _, mdrepl := range mdrepls {
+		st.queryReplacers[mdrepl] = rpls // FIXME: split by schema
+	}
+
+	return nil
+}
+
 type ModelDesc struct {
 	modelType reflect.Type
 	storeName string

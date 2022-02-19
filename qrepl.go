@@ -12,7 +12,7 @@ type ReplaceEntry struct {
 }
 
 // ReplaceEntries создает map[Old]New - замены текста в запросе для нужной модели
-func (sr *Store) ReplaceEntries(md *ModelDesc) ([]string, map[string]ReplaceEntry, error) {
+func ReplaceEntries(md *ModelDesc) ([]string, map[string]ReplaceEntry, error) {
 	rpls := make(map[string]ReplaceEntry)
 
 	if len(md.ModelType().Name()) == 0 {

@@ -5,19 +5,36 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"runtime"
 	"strings"
 
 	"github.com/covrom/pgparty/utils"
 )
 
+func Replace[T Storable](ctx context.Context, modelItem T) error {
+	st := PgStoreFromContext(ctx)
+	if st == nil {
+		_, file, no, ok := runtime.Caller(1)
+		if ok {
+			log.Printf("Get error at %s line %d: store not found in context", file, no)
+		}
+		return fmt.Errorf("Get: store not found in context")
+	}
+	return st.Replace(ctx, modelItem)
+}
+
 // Replace сохраняет новый или существующий элемент модели, не вызывая никаких callbacks
-func (sr *PgStore) Replace(ctx context.Context, modelItem interface{}) error {
+func (sr *PgStore) Replace(ctx context.Context, modelItem Storable) error {
 	// ctx = WithLoggingQuery(ctx)
 
 	return sr.WithTx(ctx, func(srx *PgStore) error {
-		md, ok := sr.GetModelDescription(modelItem)
+		sn, ok := CurrentSchemaFromContext(ctx)
 		if !ok {
-			return fmt.Errorf("cant't get model description for %T", modelItem)
+			return fmt.Errorf("Replace error: context must contains current schema")
+		}
+		md, ok := sr.GetModelDescription(sn, modelItem)
+		if !ok {
+			return fmt.Errorf("Replace error: cant't get model description for %T in schema %q", modelItem, sn)
 		}
 
 		cols := make([]string, 0, md.ColumnPtrsCount())

@@ -39,9 +39,9 @@ func Get[T Storable](ctx context.Context, query string, dest *T, args ...interfa
 	if st == nil {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
-			log.Printf("PrepGet error at %s line %d: store not found in context", file, no)
+			log.Printf("Get error at %s line %d: store not found in context", file, no)
 		}
-		return fmt.Errorf("PrepGet: store not found in context")
+		return fmt.Errorf("Get: store not found in context")
 	}
 	return st.PrepGet(ctx, query, dest, args...)
 }

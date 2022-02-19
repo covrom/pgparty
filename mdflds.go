@@ -24,7 +24,7 @@ type Mdjs struct {
 
 func ModelsAndFields(ctx context.Context, st *PgStore, schema string) ([]Mdjs, error) {
 	ret := make([]Mdjs, 0, 10)
-	mds := st.ModelDescriptions()
+	mds := st.ModelDescriptions(schema)
 	for _, md := range mds {
 		sn := schema
 		mdsn := md.Schema()

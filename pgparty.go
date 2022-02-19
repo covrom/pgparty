@@ -109,7 +109,7 @@ func (sr PgStore) WithBeginTx(ctx context.Context, f func(storeCopy *PgStore) er
 	}()
 
 	nstp := &nst
-	// если в контексте есть текущая схема - выставляем ее
+
 	if sch, ok := CurrentSchemaFromContext(ctx); ok {
 		q := fmt.Sprintf(`SELECT set_config('search_path', '%s', true)`, sch)
 		if IsLoggingQuery(ctx) {
@@ -120,6 +120,8 @@ func (sr PgStore) WithBeginTx(ctx context.Context, f func(storeCopy *PgStore) er
 		} else {
 			_ = rows.Close()
 		}
+	} else {
+		return fmt.Errorf("context must contains current schema")
 	}
 
 	if e := f(nstp); e != nil {
