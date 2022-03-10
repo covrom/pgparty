@@ -10,7 +10,7 @@ func (sr *Store) AnalyzeAndReplaceQuery(query, schema string) (string, map[strin
 	qps := scanParamsAndQueries(query)
 	repl := make([]string, len(qps))
 
-	qrpls := sr.QueryReplacers()
+	qrpls := sr.QueryReplacers()[schema]
 
 	// выделим только актуально используемые модели
 	rpls := make(map[string]ReplaceEntry)
@@ -42,11 +42,23 @@ func (sr *Store) AnalyzeAndReplaceQuery(query, schema string) (string, map[strin
 		if len(prm) > 13 && prm[:13] == "&CURRSCHEMA.&" {
 			pfx = schemapfx
 			prm = prm[12:]
+		} else {
+			msch := strings.Split(prm, ".&")
+			if len(msch) == 2 {
+				if mrpls, ok := sr.QueryReplacers()[msch[0]]; ok {
+					if mres, ok := mrpls["&"+msch[1]]; ok {
+						mdto, ok := mres["&"+msch[1]]
+						if ok {
+							repl[i] = mdto.To
+						}
+					}
+				}
+			}
 		}
 		if mdto, ok := rpls[prm]; ok {
 			torpl := mdto.To
-			if pfx == "" && schema != "" && prm[0] == '&' &&
-				qp.query[0] == '&' && !strings.HasPrefix(torpl, schemapfx) && mdto.Schema == "" {
+			if pfx == "" && prm[0] == '&' &&
+				qp.query[0] == '&' && !strings.HasPrefix(torpl, schemapfx) {
 				pfx = schemapfx
 			}
 			repl[i] = fmt.Sprintf("%s%s", pfx, strings.ReplaceAll(qp.query, prm, torpl))
@@ -103,7 +115,11 @@ func scanParamsAndQueries(query string) []scanQP {
 			// в случае алиаса слово может начинаться раньше чем :
 			idx := strings.IndexAny(wrd, ":&")
 			if idx > 0 {
-				wrd = wrd[idx:]
+				if wrd[idx] == '&' && wrd[idx-1] == '.' {
+					w = wrd
+				} else {
+					wrd = wrd[idx:]
+				}
 			}
 			if (strings.HasPrefix(wrd, "&") || strings.HasPrefix(wrd, ":")) && !strings.HasPrefix(wrd, "::") {
 				if idx := strings.Index(wrd, "::"); idx > 0 {

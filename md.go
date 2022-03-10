@@ -7,13 +7,17 @@ import (
 	"github.com/covrom/pgparty/utils"
 )
 
-func Register[T Storable](st *Store, schema string, m T) error {
-	value := reflect.Indirect(reflect.ValueOf(m))
+type MD[T Storable] struct {
+	val T
+}
+
+func (m MD[T]) MD(schema string) (*ModelDesc, error) {
+	value := reflect.Indirect(reflect.ValueOf(m.val))
 	if value.Kind() != reflect.Struct {
-		return fmt.Errorf("only structs are supported: %s is not a struct", value.Type())
+		return nil, fmt.Errorf("only structs are supported: %s is not a struct", value.Type())
 	}
 	modelType := value.Type()
-	storeName := m.StoreName()
+	storeName := m.val.StoreName()
 
 	md := &ModelDesc{
 		modelType: modelType,
@@ -22,7 +26,19 @@ func Register[T Storable](st *Store, schema string, m T) error {
 	}
 
 	if err := md.init(); err != nil {
-		return fmt.Errorf("init ModelDesc failed: %s", err)
+		return nil, fmt.Errorf("init ModelDesc failed: %s", err)
+	}
+	return md, nil
+}
+
+type ModelDescriptorer interface {
+	MD(schema string) (*ModelDesc, error)
+}
+
+func Register[T ModelDescriptorer](st *Store, schema string, m T) error {
+	md, err := m.MD(schema)
+	if err != nil {
+		return fmt.Errorf("init ModelDesc failed: %w", err)
 	}
 
 	if mds, ok := st.modelDescriptions[md.schema]; ok {
@@ -32,12 +48,17 @@ func Register[T Storable](st *Store, schema string, m T) error {
 		st.modelDescriptions[md.schema][md.ModelType()] = md
 	}
 
-	mdrepls, rpls, err := ReplaceEntries(md)
+	mdrepls, rpls, err := md.ReplaceEntries(md.schema)
 	if err != nil {
 		return err
 	}
 	for _, mdrepl := range mdrepls {
-		st.queryReplacers[mdrepl] = rpls // FIXME: split by schema
+		if rs, ok := st.queryReplacers[md.schema]; ok {
+			rs[mdrepl] = rpls
+		} else {
+			st.queryReplacers[md.schema] = make(map[sqlPattern]map[string]ReplaceEntry)
+			st.queryReplacers[md.schema][mdrepl] = rpls
+		}
 	}
 
 	return nil

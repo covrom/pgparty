@@ -12,12 +12,12 @@ type (
 
 type Store struct {
 	modelDescriptions map[schemaName]map[reflect.Type]*ModelDesc
-	queryReplacers    map[sqlPattern]map[string]ReplaceEntry
+	queryReplacers    map[schemaName]map[sqlPattern]map[string]ReplaceEntry
 }
 
 func (s *Store) Init() {
 	s.modelDescriptions = make(map[schemaName]map[reflect.Type]*ModelDesc)
-	s.queryReplacers = make(map[sqlPattern]map[string]ReplaceEntry)
+	s.queryReplacers = make(map[schemaName]map[sqlPattern]map[string]ReplaceEntry)
 }
 
 func (s Store) AllSchemas() []string {
@@ -33,7 +33,7 @@ func (s Store) ModelDescriptions(schema string) map[reflect.Type]*ModelDesc {
 	return s.modelDescriptions[schema]
 }
 
-func (s Store) QueryReplacers() map[string]map[string]ReplaceEntry {
+func (s Store) QueryReplacers() map[schemaName]map[sqlPattern]map[string]ReplaceEntry {
 	return s.queryReplacers
 }
 
