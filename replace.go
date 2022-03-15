@@ -12,26 +12,28 @@ import (
 )
 
 func Replace[T Storable](ctx context.Context, modelItem T) error {
-	st := PgStoreFromContext(ctx)
-	if st == nil {
+	s, err := ShardFromContext(ctx)
+	if err != nil {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
-			log.Printf("Get error at %s line %d: store not found in context", file, no)
+			log.Printf("Replace error at %s line %d: %s", file, no, err)
 		}
-		return fmt.Errorf("Get: store not found in context")
+		return fmt.Errorf("Replace: %w", err)
 	}
-	return st.Replace(ctx, modelItem)
+	return s.Store.Replace(ctx, modelItem)
 }
 
-// Replace сохраняет новый или существующий элемент модели, не вызывая никаких callbacks
+// Replace сохраняет новый или существующий элемент модели
 func (sr *PgStore) Replace(ctx context.Context, modelItem Storable) error {
 	// ctx = WithLoggingQuery(ctx)
+	s, err := ShardFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("Replace: %w", err)
+	}
+
+	sn := s.Store.Schema()
 
 	return sr.WithTx(ctx, func(srx *PgStore) error {
-		sn, ok := CurrentSchemaFromContext(ctx)
-		if !ok {
-			return fmt.Errorf("Replace error: context must contains current schema")
-		}
 		md, ok := sr.GetModelDescription(sn, modelItem)
 		if !ok {
 			return fmt.Errorf("Replace error: cant't get model description for %T in schema %q", modelItem, sn)

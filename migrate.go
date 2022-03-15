@@ -7,98 +7,84 @@ import (
 	"log"
 )
 
-func (sr *PgStore) Migrate(ctx context.Context, schemaForCommon string, mProcessor MigrationProcessor) error {
+func (sr *PgStore) Migrate(ctx context.Context, mProcessor MigrationProcessor) error {
+	shard, err := ShardFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("Migrate: %w", err)
+	}
 	if e := sr.WithTx(ctx, func(stx *PgStore) error {
 		tx := stx.tx
-		ctxTx := WithPgStore(ctx, stx)
-		for _, mdsn := range stx.AllSchemas() {
-			mds := stx.ModelDescriptions(mdsn)
-			// 	if _, err := tx.ExecContext(ctxTx, `DROP SCHEMA IF EXISTS public`); err != nil {
-			// 		log.Println(err)
-			// 	}
-			for _, md := range mds {
-				// FIXME: remove common schema, must be only target schema
+		ctxTx := WithShard(ctx, Shard{shard.ID, stx})
+		mdsn := stx.Schema()
+		mds := stx.ModelDescriptions(mdsn)
+		// 	if _, err := tx.ExecContext(ctxTx, `DROP SCHEMA IF EXISTS public`); err != nil {
+		// 		log.Println(err)
+		// 	}
+		for _, md := range mds {
+			// здесь мы просто сохраняем имя схемы в контексте
+			// поскольку транзакция запущена общая на все схемы, то здесь не следует ожидать,
+			// что запросы выполнятся в верной схеме из этого контекста,
+			// нужно явно во все запросы добавлять имя схемы
 
-				// если схема для всех - пустая, и это модель без схемы (общая), то пропускаем
-				// таким образом, будут созданы все глобальные модели
-				if schemaForCommon == "" && mdsn == "" {
-					continue
-				}
-				// пропускаем все глобальные модели, если указана схема для общих
-				if schemaForCommon != "" && mdsn != "" {
-					continue
-				}
-				if mdsn == "" {
-					// подставляем общую схему для общих моделей (без схемы)
-					mdsn = schemaForCommon
-				}
+			// убедимся, что есть схема
+			if err := EnsureModelSchema(ctxTx, md); err != nil {
+				return err
+			}
 
-				// здесь мы просто созраняем имя схемы в контексте
-				// поскольку транзакция запущена общая на все схемы, то здесь не следует ожидать,
-				// что запросы выполнятся в верной схеме из этого контекста,
-				// нужно явно во все запросы добавлять имя схемы
-				ctxMdTx := WithCurrentSchema(ctxTx, mdsn)
+			dbidxs, err := CurrentSchemaIndexes(ctxTx, md.StoreName())
+			if err != nil {
+				return fmt.Errorf("Migrate CurrentSchemaIndexes error: %w", err)
+			}
 
-				// убедимся, что есть схема
-				if err := EnsureModelSchema(ctxMdTx, md); err != nil {
-					return err
-				}
+			log.Printf("db table %s have indexes: %s", mdsn+"."+md.StoreName(), dbidxs)
 
-				dbidxs, err := CurrentSchemaIndexes(ctxMdTx, md.StoreName())
-				if err != nil {
-					return fmt.Errorf("Migrate CurrentSchemaIndexes error: %w", err)
-				}
+			// грузим конфиг схемы
+			dbconf := &DbConfigTable{}
+			if err := dbconf.LoadTable(ctxTx, md.StoreName()); err != nil {
+				return err
+			}
 
-				log.Printf("db table %s have indexes: %s", mdsn+"."+md.StoreName(), dbidxs)
+			sqsmd, err := MD2SQLModel(md)
+			if err != nil {
+				return err
+			}
 
-				// грузим конфиг схемы
-				dbconf := &DbConfigTable{}
-				if err := dbconf.LoadTable(ctxMdTx, md.StoreName()); err != nil {
-					return err
-				}
-
-				sqsmd, err := MD2SQLModel(md)
-				if err != nil {
-					return err
-				}
-
-				if dbconf.IsEmpty() {
-					// пустая - создаем
-					if err := SQLCreateModelWithColumns(ctxMdTx, md, sqsmd); err != nil {
-						return err
-					}
-					if mProcessor != nil {
-						if err := mProcessor.AfterCreateNewSchemaTable(ctxMdTx, stx, md, mdsn); err != nil {
-							return err
-						}
-					}
-					continue
-				}
-
-				sqsdb := dbconf.Storej
-
-				if !(sqsdb.Equal(sqsmd) && IndexesEqualToDBIndexes(sqsmd, dbidxs)) {
-					// модифицируем таблицу
-					err := SQLAlterModel(ctxMdTx, md, dbidxs, sqsdb, sqsmd)
-					if err != nil {
-						if mProcessor != nil {
-							if err2 := mProcessor.AfterAlterModelError(ctxMdTx, err, stx, md, sqsdb, sqsmd, mdsn); err2 != nil {
-								return err2
-							}
-						}
-						return err
-					}
-				}
-
-				// миграции
-				if _, err := tx.ExecContext(ctxMdTx,
-					`CREATE TABLE IF NOT EXISTS `+mdsn+`._migrations (name VARCHAR(250) NOT NULL, PRIMARY KEY (name))`); err != nil {
+			if dbconf.IsEmpty() {
+				// пустая - создаем
+				if err := SQLCreateModelWithColumns(ctxTx, md, sqsmd); err != nil {
 					return err
 				}
 				if mProcessor != nil {
-					if err := mProcessor.AfterMigrate(ctxMdTx, stx, sr, sqsdb, sqsmd, mdsn); err != nil {
+					if err := mProcessor.AfterCreateNewSchemaTable(ctxTx, stx, md, mdsn); err != nil {
 						return err
 					}
+				}
+				continue
+			}
+
+			sqsdb := dbconf.Storej
+
+			if !(sqsdb.Equal(sqsmd) && IndexesEqualToDBIndexes(sqsmd, dbidxs)) {
+				// модифицируем таблицу
+				err := SQLAlterModel(ctxTx, md, dbidxs, sqsdb, sqsmd)
+				if err != nil {
+					if mProcessor != nil {
+						if err2 := mProcessor.AfterAlterModelError(ctxTx, err, stx, md, sqsdb, sqsmd, mdsn); err2 != nil {
+							return err2
+						}
+					}
+					return err
+				}
+			}
+
+			// миграции
+			if _, err := tx.ExecContext(ctxTx,
+				`CREATE TABLE IF NOT EXISTS `+mdsn+`._migrations (name VARCHAR(250) NOT NULL, PRIMARY KEY (name))`); err != nil {
+				return err
+			}
+			if mProcessor != nil {
+				if err := mProcessor.AfterMigrate(ctxTx, stx, sr, sqsdb, sqsmd, mdsn); err != nil {
+					return err
 				}
 			}
 		}

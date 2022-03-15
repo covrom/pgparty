@@ -18,7 +18,11 @@ import (
 // Prepare всегда делается на уровне базы, поэтому, нужно всегдла явно затаскивать его в контекст нужной транзакции через tx.Stmtx(psql)
 // Можно вызывать Prepare сколько угодно раз, но реально рассчитываться он будет один раз, в остальные разы будет браться из кэша.
 func (sr *PgStore) PrepareQuery(ctx context.Context, query string) (string, error) {
-	schema, _ := CurrentSchemaFromContext(ctx)
+	s, err := ShardFromContext(ctx)
+	if err != nil {
+		return "", fmt.Errorf("PrepareQuery: %w", err)
+	}
+	schema := s.Store.Schema()
 
 	repls, _, err := sr.AnalyzeAndReplaceQuery(query, schema)
 	if err != nil {
@@ -35,15 +39,15 @@ func (sr *PgStore) PrepareQuery(ctx context.Context, query string) (string, erro
 }
 
 func Get[T Storable](ctx context.Context, query string, dest *T, args ...interface{}) error {
-	st := PgStoreFromContext(ctx)
-	if st == nil {
+	s, err := ShardFromContext(ctx)
+	if err != nil {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
-			log.Printf("Get error at %s line %d: store not found in context", file, no)
+			log.Printf("Get error at %s line %d: %s", file, no, err)
 		}
-		return fmt.Errorf("Get: store not found in context")
+		return fmt.Errorf("Get: %w", err)
 	}
-	return st.PrepGet(ctx, query, dest, args...)
+	return s.Store.PrepGet(ctx, query, dest, args...)
 }
 
 func (sr *PgStore) PrepGet(ctx context.Context, query string, dest interface{}, args ...interface{}) error {
@@ -78,15 +82,15 @@ func (sr *PgStore) PrepGet(ctx context.Context, query string, dest interface{}, 
 }
 
 func Select[T Storable](ctx context.Context, query string, dest *[]T, args ...interface{}) error {
-	st := PgStoreFromContext(ctx)
-	if st == nil {
+	s, err := ShardFromContext(ctx)
+	if err != nil {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
-			log.Printf("error at %s line %d: store not found in context", file, no)
+			log.Printf("PrepSelect error at %s line %d: %s", file, no, err)
 		}
-		return fmt.Errorf("PrepSelect: store not found in context")
+		return fmt.Errorf("PrepSelect: %w", err)
 	}
-	return st.PrepSelect(ctx, query, dest, args...)
+	return s.Store.PrepSelect(ctx, query, dest, args...)
 }
 
 func (sr *PgStore) PrepSelect(ctx context.Context, query string, dest interface{}, args ...interface{}) error {
@@ -122,15 +126,15 @@ func (sr *PgStore) PrepSelect(ctx context.Context, query string, dest interface{
 }
 
 func Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	st := PgStoreFromContext(ctx)
-	if st == nil {
+	s, err := ShardFromContext(ctx)
+	if err != nil {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
-			log.Printf("error at %s line %d: store not found in context", file, no)
+			log.Printf("PrepExec error at %s line %d: %s", file, no, err)
 		}
-		return nil, fmt.Errorf("PrepExec: store not found in context")
+		return nil, fmt.Errorf("PrepExec: %w", err)
 	}
-	return st.PrepExec(ctx, query, args...)
+	return s.Store.PrepExec(ctx, query, args...)
 }
 
 func (sr *PgStore) PrepExec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
@@ -165,15 +169,15 @@ func (sr *PgStore) PrepExec(ctx context.Context, query string, args ...interface
 }
 
 func Query(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
-	st := PgStoreFromContext(ctx)
-	if st == nil {
+	s, err := ShardFromContext(ctx)
+	if err != nil {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
-			log.Printf("error at %s line %d: store not found in context", file, no)
+			log.Printf("PrepQueryx error at %s line %d: %s", file, no, err)
 		}
-		return nil, fmt.Errorf("PrepQueryx: store not found in context")
+		return nil, fmt.Errorf("PrepQueryx: %w", err)
 	}
-	return st.PrepQueryx(ctx, query, args...)
+	return s.Store.PrepQueryx(ctx, query, args...)
 }
 
 func (sr *PgStore) PrepQueryx(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error) {
@@ -205,20 +209,22 @@ func (sr *PgStore) PrepQueryx(ctx context.Context, query string, args ...interfa
 }
 
 func SelectCursorWalk[T Storable](ctx context.Context, cursorName, selectQuery string, destSlice *[]T, fetchSize int,
-	f func(destSlice interface{}) error, args ...interface{}) error {
-	st := PgStoreFromContext(ctx)
-	if st == nil {
+	f func(destSlice interface{}) error, args ...interface{},
+) error {
+	s, err := ShardFromContext(ctx)
+	if err != nil {
 		_, file, no, ok := runtime.Caller(1)
 		if ok {
-			log.Printf("error at %s line %d: store not found in context", file, no)
+			log.Printf("SelectCursorWalk error at %s line %d: %s", file, no, err)
 		}
-		return fmt.Errorf("PrepSelect: store not found in context")
+		return fmt.Errorf("SelectCursorWalk: %w", err)
 	}
-	return st.PrepSelectCursorWalk(ctx, cursorName, selectQuery, destSlice, fetchSize, f, args...)
+	return s.Store.PrepSelectCursorWalk(ctx, cursorName, selectQuery, destSlice, fetchSize, f, args...)
 }
 
 func (sr *PgStore) PrepSelectCursorWalk(ctx context.Context, cursorName, selectQuery string, destSlice interface{}, fetchSize int,
-	f func(destSlice interface{}) error, args ...interface{}) error {
+	f func(destSlice interface{}) error, args ...interface{},
+) error {
 	slt := reflect.TypeOf(destSlice)
 	if slt.Kind() != reflect.Ptr || slt.Elem().Kind() != reflect.Slice {
 		return fmt.Errorf("destSlice must be a pointer to slice")

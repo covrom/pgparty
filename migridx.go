@@ -32,11 +32,15 @@ func (idxs DBIndexDefs) FindByName(n string) (DBIndexDef, bool) {
 }
 
 func CurrentSchemaIndexes(ctx context.Context, tablename string) (DBIndexDefs, error) {
-	stx := PgStoreFromContext(ctx)
-	mdsn, ok := CurrentSchemaFromContext(ctx)
-	if !ok || stx == nil || stx.tx == nil {
-		return nil, fmt.Errorf("context must contains store transaction and schema")
+	s, err := ShardFromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("CurrentSchemaIndexes: %w", err)
 	}
+	stx := s.Store
+	if stx == nil || stx.tx == nil {
+		return nil, fmt.Errorf("context must contains store transaction")
+	}
+	mdsn := stx.Schema()
 
 	tablename = mdsn + "." + tablename
 

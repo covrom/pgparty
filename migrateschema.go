@@ -14,11 +14,15 @@ func SaveModelConfig(ctx context.Context, md *ModelDesc) error {
 }
 
 func EnsureModelSchema(ctx context.Context, md *ModelDesc) error {
-	stx := PgStoreFromContext(ctx)
-	mdsn, ok := CurrentSchemaFromContext(ctx)
-	if !ok || stx == nil || stx.tx == nil {
-		return fmt.Errorf("context must contains store transaction and schema")
+	s, err := ShardFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("EnsureModelSchema: %w", err)
 	}
+	stx := s.Store
+	if stx == nil || stx.tx == nil {
+		return fmt.Errorf("context must contains store transaction")
+	}
+	mdsn := stx.Schema()
 	// убедимся, что есть схема
 	if _, err := stx.tx.ExecContext(ctx, `CREATE SCHEMA IF NOT EXISTS `+mdsn); err != nil {
 		return err

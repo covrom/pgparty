@@ -9,26 +9,13 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type CtxPgStore struct{}
-
-func WithPgStore(ctx context.Context, st *PgStore) context.Context {
-	return context.WithValue(ctx, CtxPgStore{}, st)
-}
-
-func PgStoreFromContext(ctx context.Context) *PgStore {
-	if v, ok := ctx.Value(CtxPgStore{}).(*PgStore); ok {
-		return v
-	}
-	return nil
-}
-
 func WithTx(ctx context.Context, f func(context.Context) error) error {
-	st := PgStoreFromContext(ctx)
-	if st == nil {
-		return fmt.Errorf("WithTx: store not found in context")
+	s, err := ShardFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("WithTx: %w", err)
 	}
-	return st.WithTx(ctx, func(stx *PgStore) error {
-		ctxTx := WithPgStore(ctx, stx)
+	return s.Store.WithTx(ctx, func(stx *PgStore) error {
+		ctxTx := WithShard(ctx, Shard{s.ID, stx})
 		return f(ctxTx)
 	})
 }
@@ -36,15 +23,20 @@ func WithTx(ctx context.Context, f func(context.Context) error) error {
 type PgStore struct {
 	Store
 
-	db *sqlx.DB
-	tx *sqlx.Tx
+	db     *sqlx.DB
+	tx     *sqlx.Tx
+	schema string
 
 	trace bool
 }
 
-func NewPgStore(db *sqlx.DB) *PgStore {
+func NewPgStore(db *sqlx.DB, schema string) *PgStore {
+	if schema == "" {
+		panic("schema is empty")
+	}
 	ret := &PgStore{
-		db: db,
+		db:     db,
+		schema: schema,
 	}
 
 	ret.Init()
@@ -58,6 +50,10 @@ func (sr *PgStore) Close() {
 
 func (sr PgStore) String() string {
 	return sr.db.DriverName()
+}
+
+func (sr PgStore) Schema() string {
+	return sr.schema
 }
 
 // SetUnsafe sets a version of Tx which will silently succeed to scan when
@@ -110,18 +106,15 @@ func (sr PgStore) WithBeginTx(ctx context.Context, f func(storeCopy *PgStore) er
 
 	nstp := &nst
 
-	if sch, ok := CurrentSchemaFromContext(ctx); ok {
-		q := fmt.Sprintf(`SELECT set_config('search_path', '%s', true)`, sch)
-		if IsLoggingQuery(ctx) {
-			log.Println(q)
-		}
-		if rows, e := nstp.tx.QueryxContext(ctx, q); e != nil {
-			return e
-		} else {
-			_ = rows.Close()
-		}
+	sch := sr.schema
+	q := fmt.Sprintf(`SELECT set_config('search_path', '%s', true)`, sch)
+	if IsLoggingQuery(ctx) {
+		log.Println(q)
+	}
+	if rows, e := nstp.tx.QueryxContext(ctx, q); e != nil {
+		return e
 	} else {
-		return fmt.Errorf("context must contains current schema")
+		_ = rows.Close()
 	}
 
 	if e := f(nstp); e != nil {

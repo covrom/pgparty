@@ -392,11 +392,15 @@ func SQLAlterTable(schema, tname string, last, to *modelcols.SQLModel, dbcolinfo
 }
 
 func SQLCreateModelWithColumns(ctx context.Context, md *ModelDesc, sqs *modelcols.SQLModel) error {
-	stx := PgStoreFromContext(ctx)
-	sn, ok := CurrentSchemaFromContext(ctx)
-	if !ok || stx == nil || stx.tx == nil {
-		return fmt.Errorf("context must contains store transaction and schema")
+	s, err := ShardFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("SQLCreateModelWithColumns: %w", err)
 	}
+	stx := s.Store
+	if stx == nil || stx.tx == nil {
+		return fmt.Errorf("context must contains store transaction")
+	}
+	sn := stx.Schema()
 
 	pt := &PatchTable{
 		Schema: sn,
@@ -420,11 +424,15 @@ func SQLCreateModelWithColumns(ctx context.Context, md *ModelDesc, sqs *modelcol
 }
 
 func SQLAlterModel(ctx context.Context, md *ModelDesc, mddbidxs DBIndexDefs, last, to *modelcols.SQLModel) error {
-	stx := PgStoreFromContext(ctx)
-	sn, ok := CurrentSchemaFromContext(ctx)
-	if !ok || stx == nil || stx.tx == nil {
-		return fmt.Errorf("context must contains store transaction and schema")
+	s, err := ShardFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("SQLAlterModel: %w", err)
 	}
+	stx := s.Store
+	if stx == nil || stx.tx == nil {
+		return fmt.Errorf("context must contains store transaction")
+	}
+	sn := stx.Schema()
 
 	colinfos, err := DBColumnsInfo(ctx, stx.tx, sn, md.StoreName())
 	if err != nil {

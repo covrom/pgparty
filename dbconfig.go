@@ -29,11 +29,15 @@ func DbConfigTableFromModel(md *ModelDesc) (*DbConfigTable, error) {
 }
 
 func (c *DbConfigTable) LoadTable(ctx context.Context, table string) error {
-	stx := PgStoreFromContext(ctx)
-	sn, ok := CurrentSchemaFromContext(ctx)
-	if !ok || stx == nil || stx.tx == nil {
-		return fmt.Errorf("context must contains store transaction and schema")
+	s, err := ShardFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("LoadTable: %w", err)
 	}
+	stx := s.Store
+	if stx == nil || stx.tx == nil {
+		return fmt.Errorf("context must contains store transaction")
+	}
+	sn := stx.Schema()
 	c.TableName = table
 	c.Storej = &modelcols.SQLModel{}
 	if err := stx.tx.GetContext(ctx, c, `SELECT table_name,storej from `+sn+`._config WHERE table_name = $1`,
@@ -58,11 +62,15 @@ func (c *DbConfigTable) LoadTable(ctx context.Context, table string) error {
 }
 
 func (c DbConfigTable) SaveTable(ctx context.Context) error {
-	stx := PgStoreFromContext(ctx)
-	sn, ok := CurrentSchemaFromContext(ctx)
-	if !ok || stx == nil || stx.tx == nil {
-		return fmt.Errorf("context must contains store transaction and schema")
+	s, err := ShardFromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("SaveTable: %w", err)
 	}
+	stx := s.Store
+	if stx == nil || stx.tx == nil {
+		return fmt.Errorf("context must contains store transaction")
+	}
+	sn := stx.Schema()
 
 	q := fmt.Sprintf(`INSERT INTO %s._config (table_name,storej) 
 	VALUES($1,$2) ON CONFLICT(table_name) DO
@@ -70,7 +78,7 @@ func (c DbConfigTable) SaveTable(ctx context.Context) error {
 
 	log.Println(q, ", $1 = ", c.TableName, ", $2 = ", c.Storej)
 
-	_, err := stx.tx.ExecContext(ctx, q, c.TableName, c.Storej)
+	_, err = stx.tx.ExecContext(ctx, q, c.TableName, c.Storej)
 	if err != nil {
 		return fmt.Errorf("SaveModelConfig error: %w", err)
 	}
