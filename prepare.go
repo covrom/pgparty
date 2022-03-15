@@ -13,18 +13,13 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// PrepareQuery подготавливает запрос, в котором могут быть указаны имена моделей из языка го &ModelName или полей :FieldName, :ModelName.FieldName
-// Имя таблицы many-2-many связи подставляется по шаблону &ModelName.Many2ManyFieldName, в ней два id-поля по шаблону :ModelName1_id и :ModelName2_id
-// Prepare всегда делается на уровне базы, поэтому, нужно всегдла явно затаскивать его в контекст нужной транзакции через tx.Stmtx(psql)
-// Можно вызывать Prepare сколько угодно раз, но реально рассчитываться он будет один раз, в остальные разы будет браться из кэша.
 func (sr *PgStore) PrepareQuery(ctx context.Context, query string) (string, error) {
-	s, err := ShardFromContext(ctx)
+	shs, err := ShardsFromContext(ctx)
 	if err != nil {
 		return "", fmt.Errorf("PrepareQuery: %w", err)
 	}
-	schema := s.Store.Schema()
 
-	repls, _, err := sr.AnalyzeAndReplaceQuery(query, schema)
+	repls, _, err := shs.AnalyzeAndReplaceQuery(sr, query)
 	if err != nil {
 		return "", err
 	}

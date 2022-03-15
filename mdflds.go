@@ -22,16 +22,11 @@ type Mdjs struct {
 	Fields    []MdjsField `json:"fields"`
 }
 
-func ModelsAndFields(ctx context.Context, st *PgStore, schema string) ([]Mdjs, error) {
+func ModelsAndFields(ctx context.Context, st *PgStore) ([]Mdjs, error) {
 	ret := make([]Mdjs, 0, 10)
-	mds := st.ModelDescriptions(schema)
+	mds := st.ModelDescriptions()
 	for _, md := range mds {
-		sn := schema
-		mdsn := md.Schema()
-		if !(mdsn == "" || mdsn == sn) {
-			continue
-		}
-
+		sn := st.Schema()
 		m := Mdjs{
 			ModelName: "&" + md.ModelType().Name(),
 			Md:        md,

@@ -16,7 +16,7 @@ func (sr *PgStore) Migrate(ctx context.Context, mProcessor MigrationProcessor) e
 		tx := stx.tx
 		ctxTx := WithShard(ctx, Shard{shard.ID, stx})
 		mdsn := stx.Schema()
-		mds := stx.ModelDescriptions(mdsn)
+		mds := stx.ModelDescriptions()
 		// 	if _, err := tx.ExecContext(ctxTx, `DROP SCHEMA IF EXISTS public`); err != nil {
 		// 		log.Println(err)
 		// 	}

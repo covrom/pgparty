@@ -6,11 +6,11 @@ import (
 	"unicode/utf8"
 )
 
-func (sr *Store) AnalyzeAndReplaceQuery(query, schema string) (string, map[string]ReplaceEntry, error) {
+func (shs *Shards) AnalyzeAndReplaceQuery(sr *PgStore, query string) (string, map[string]ReplaceEntry, error) {
 	qps := scanParamsAndQueries(query)
 	repl := make([]string, len(qps))
 
-	qrpls := sr.QueryReplacers()[schema]
+	qrpls := sr.QueryReplacers()
 
 	// выделим только актуально используемые модели
 	rpls := make(map[string]ReplaceEntry)
@@ -30,7 +30,7 @@ func (sr *Store) AnalyzeAndReplaceQuery(query, schema string) (string, map[strin
 	// log.Log.Debugf("rpls: %v", rpls)
 	// log.Log.Debugf("qps: %v", qps)
 
-	schemapfx := schema + "."
+	schemapfx := sr.Schema() + "."
 	// сделаем замены
 	for i, qp := range qps {
 		if qp.param == "" {
@@ -45,7 +45,8 @@ func (sr *Store) AnalyzeAndReplaceQuery(query, schema string) (string, map[strin
 		} else {
 			msch := strings.Split(prm, ".&")
 			if len(msch) == 2 {
-				if mrpls, ok := sr.QueryReplacers()[msch[0]]; ok {
+				if shard, ok := shs.ShardByID(msch[0]); ok {
+					mrpls := shard.Store.QueryReplacers()
 					if mres, ok := mrpls["&"+msch[1]]; ok {
 						mdto, ok := mres["&"+msch[1]]
 						if ok {

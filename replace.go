@@ -34,7 +34,7 @@ func (sr *PgStore) Replace(ctx context.Context, modelItem Storable) error {
 	sn := s.Store.Schema()
 
 	return sr.WithTx(ctx, func(srx *PgStore) error {
-		md, ok := sr.GetModelDescription(sn, modelItem)
+		md, ok := srx.GetModelDescription(modelItem)
 		if !ok {
 			return fmt.Errorf("Replace error: cant't get model description for %T in schema %q", modelItem, sn)
 		}
@@ -68,10 +68,7 @@ func (sr *PgStore) Replace(ctx context.Context, modelItem Storable) error {
 			updkeys = append(updkeys, k)
 			exclkeys = append(exclkeys, "excluded."+k)
 		}
-		mdsn := md.StoreName()
-		if md.Schema() != "" {
-			mdsn = md.Schema() + "." + md.StoreName()
-		}
+		mdsn := sn + "." + md.StoreName()
 		if len(updkeys) == 1 {
 			replQuery = fmt.Sprintf(`INSERT INTO %s (%s) VALUES(%s) ON CONFLICT(%s) DO UPDATE SET %s=%s`,
 				mdsn, strings.Join(cols, ","), fillers,

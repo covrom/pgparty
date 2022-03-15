@@ -1,6 +1,8 @@
 package pgparty
 
 import (
+	"context"
+	"fmt"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
@@ -11,10 +13,11 @@ type Shards struct {
 	m map[string]Shard
 }
 
-func NewShards() *Shards {
-	return &Shards{
+func NewShards(ctx context.Context) (*Shards, context.Context) {
+	shs := &Shards{
 		m: make(map[string]Shard),
 	}
+	return shs, WithShards(ctx, shs)
 }
 
 func (s *Shards) SetShard(id string, db *sqlx.DB, schema string) Shard {
@@ -47,4 +50,17 @@ func (s *Shards) Walk(f func(Shard) error) error {
 		}
 	}
 	return nil
+}
+
+type CtxShards struct{}
+
+func WithShards(ctx context.Context, s *Shards) context.Context {
+	return context.WithValue(ctx, CtxShards{}, s)
+}
+
+func ShardsFromContext(ctx context.Context) (*Shards, error) {
+	if v, ok := ctx.Value(CtxShards{}).(*Shards); ok {
+		return v, nil
+	}
+	return nil, fmt.Errorf("context does not contain shards")
 }

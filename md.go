@@ -11,7 +11,7 @@ type MD[T Storable] struct {
 	val T
 }
 
-func (m MD[T]) MD(schema string) (*ModelDesc, error) {
+func (m MD[T]) MD() (*ModelDesc, error) {
 	value := reflect.Indirect(reflect.ValueOf(m.val))
 	if value.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("only structs are supported: %s is not a struct", value.Type())
@@ -22,7 +22,6 @@ func (m MD[T]) MD(schema string) (*ModelDesc, error) {
 	md := &ModelDesc{
 		modelType: modelType,
 		storeName: storeName,
-		schema:    schema,
 	}
 
 	if err := md.init(); err != nil {
@@ -32,33 +31,23 @@ func (m MD[T]) MD(schema string) (*ModelDesc, error) {
 }
 
 type ModelDescriptorer interface {
-	MD(schema string) (*ModelDesc, error)
+	MD() (*ModelDesc, error)
 }
 
-func Register[T ModelDescriptorer](st *Store, schema string, m T) error {
-	md, err := m.MD(schema)
+func Register[T ModelDescriptorer](st *PgStore, m T) error {
+	md, err := m.MD()
 	if err != nil {
 		return fmt.Errorf("init ModelDesc failed: %w", err)
 	}
 
-	if mds, ok := st.modelDescriptions[md.schema]; ok {
-		mds[md.ModelType()] = md
-	} else {
-		st.modelDescriptions[md.schema] = make(map[reflect.Type]*ModelDesc)
-		st.modelDescriptions[md.schema][md.ModelType()] = md
-	}
+	st.modelDescriptions[md.ModelType()] = md
 
-	mdrepls, rpls, err := md.ReplaceEntries(md.schema)
+	mdrepls, rpls, err := md.ReplaceEntries(st.Schema())
 	if err != nil {
 		return err
 	}
 	for _, mdrepl := range mdrepls {
-		if rs, ok := st.queryReplacers[md.schema]; ok {
-			rs[mdrepl] = rpls
-		} else {
-			st.queryReplacers[md.schema] = make(map[sqlPattern]map[string]ReplaceEntry)
-			st.queryReplacers[md.schema][mdrepl] = rpls
-		}
+		st.queryReplacers[mdrepl] = rpls
 	}
 
 	return nil
@@ -67,7 +56,6 @@ func Register[T ModelDescriptorer](st *Store, schema string, m T) error {
 type ModelDesc struct {
 	modelType reflect.Type
 	storeName string
-	schema    string
 
 	idField        *FieldDescription
 	createdAtField *FieldDescription
@@ -100,7 +88,6 @@ func (md *ModelDesc) CreatedAtField() *FieldDescription { return md.createdAtFie
 func (md *ModelDesc) UpdatedAtField() *FieldDescription { return md.updatedAtField }
 func (md *ModelDesc) DeletedAtField() *FieldDescription { return md.deletedAtField }
 
-func (md *ModelDesc) Schema() string                    { return md.schema }
 func (md *ModelDesc) ColumnPtrsCount() int              { return len(md.columnPtrs) }
 func (md *ModelDesc) ColumnPtr(i int) *FieldDescription { return md.columnPtrs[i] }
 func (md *ModelDesc) WalkColumnPtrs(f func(i int, v *FieldDescription) error) error {
@@ -194,7 +181,7 @@ func (md *ModelDesc) init() error {
 	return nil
 }
 
-func NewModelDescription[T Storable](m T, schema string) (*ModelDesc, error) {
+func NewModelDescription[T Storable](m T) (*ModelDesc, error) {
 	value := reflect.Indirect(reflect.ValueOf(m))
 	if value.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("only structs are supported: %s is not a struct", value.Type())
@@ -204,7 +191,6 @@ func NewModelDescription[T Storable](m T, schema string) (*ModelDesc, error) {
 	modelDescription := ModelDesc{
 		modelType: modelType,
 		storeName: storeName,
-		schema:    schema,
 	}
 
 	if err := modelDescription.init(); err != nil {

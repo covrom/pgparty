@@ -24,10 +24,10 @@ func (md *ModelDesc) ReplaceEntries(schema string) ([]string, map[string]Replace
 
 	mdprefix := ":" + md.ModelType().Name()
 
-	schmd := md.Schema() + "." + md.StoreName()
+	schmd := schema + "." + md.StoreName()
 
-	rpls[mdrepl] = ReplaceEntry{schmd, md.Schema(), md.ModelType()}
-	rpls[mdprefix+".*"] = ReplaceEntry{schmd + ".*", md.Schema(), nil}
+	rpls[mdrepl] = ReplaceEntry{schmd, schema, md.ModelType()}
+	rpls[mdprefix+".*"] = ReplaceEntry{schmd + ".*", schema, nil}
 
 	for fdi := 0; fdi < md.ColumnPtrsCount(); fdi++ {
 		fd := md.ColumnPtr(fdi)
