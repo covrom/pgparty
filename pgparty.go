@@ -20,6 +20,14 @@ func WithTx(ctx context.Context, f func(context.Context) error) error {
 	})
 }
 
+func WithTxInShard(ctx context.Context, shardId string, f func(context.Context) error) error {
+	ctx, err := SelectShard(ctx, shardId)
+	if err != nil {
+		return fmt.Errorf("WithTxInShard: %w", err)
+	}
+	return WithTx(ctx, f)
+}
+
 type PgStore struct {
 	Store
 
