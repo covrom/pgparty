@@ -13,10 +13,25 @@ Create shards repository with only one shard with one database connect
 ```go
 shs, ctx := pgparty.NewShards(pgparty.WithLoggingQuery(context.Background()))
 
+db, err = pgparty.InitDB(pgparty.DatabaseDSN{Postgres: databaseUrl})
+if err != nil {
+    return err
+}
+
 shard := shs.SetShard("shard1", db, "shard1")
 ```
 
 One shard contains one postgres schema. Its automatically created if not exist.
+
+Define some models, that implements `Storable` interface:
+```go
+type BasicModel struct {
+	ID   pgparty.UUIDv4    `json:"id"`
+	Data pgparty.NullJsonB `json:"data"`
+}
+
+func (BasicModel) StoreName() string { return "basic_models" }
+```
 
 Now, register some models in shard:
 ```go
@@ -80,7 +95,10 @@ Now, select written data from database:
 ```go
 var els []BasicModel
 if err := shard.WithTx(ctx, func(ctx context.Context) error {
-    return pgparty.Select[BasicModel](ctx, `SELECT * FROM &BasicModel`, &els) // &BasicModel - model named by golang struct type name
+    return 
+        pgparty.Select[BasicModel](ctx, 
+            `SELECT * FROM &BasicModel`, // &BasicModel - model named by golang struct type name
+        &els)
 }); err != nil {
     t.Errorf("pgparty.Select error: %s", err)
     return
