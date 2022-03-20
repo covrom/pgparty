@@ -25,7 +25,10 @@ func TestBasicUsage(t *testing.T) {
 
 	shard := shs.SetShard("shard1", db, "shard1")
 
-	pgparty.Register(shard, pgparty.MD[BasicModel]{})
+	if err := pgparty.Register(shard, pgparty.MD[BasicModel]{}); err != nil {
+		t.Errorf("pgparty.Register error: %s", err)
+		return
+	}
 
 	if err := shard.Migrate(ctx, nil); err != nil {
 		t.Errorf("shard.Migrate error: %s", err)
