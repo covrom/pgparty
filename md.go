@@ -34,20 +34,20 @@ type ModelDescriptorer interface {
 	MD() (*ModelDesc, error)
 }
 
-func Register[T ModelDescriptorer](st *PgStore, m T) error {
+func Register[T ModelDescriptorer](sh Shard, m T) error {
 	md, err := m.MD()
 	if err != nil {
 		return fmt.Errorf("init ModelDesc failed: %w", err)
 	}
 
-	st.modelDescriptions[md.ModelType()] = md
+	sh.Store.modelDescriptions[md.ModelType()] = md
 
-	mdrepls, rpls, err := md.ReplaceEntries(st.Schema())
+	mdrepls, rpls, err := md.ReplaceEntries(sh.Store.Schema())
 	if err != nil {
 		return err
 	}
 	for _, mdrepl := range mdrepls {
-		st.queryReplacers[mdrepl] = rpls
+		sh.Store.queryReplacers[mdrepl] = rpls
 	}
 
 	return nil
