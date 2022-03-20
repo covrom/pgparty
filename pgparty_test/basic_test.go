@@ -21,7 +21,7 @@ func TestBasicUsage(t *testing.T) {
 		log.Fatal("run TestMain before")
 	}
 
-	shs, ctx := pgparty.NewShards(context.Background())
+	shs, ctx := pgparty.NewShards(pgparty.WithLoggingQuery(context.Background()))
 
 	shard := shs.SetShard("shard1", db, "shard1")
 
