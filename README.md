@@ -88,7 +88,6 @@ if err := pgparty.WithTxInShard(ctx, shard.ID, func(ctx context.Context) error {
 This produces sql queries:
 ```sql
 INSERT INTO shard1.basic_models (id,data) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET data=excluded.data
-select stored data from model table
 ```
 
 Now, select written data from database:
