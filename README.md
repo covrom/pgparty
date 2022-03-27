@@ -26,13 +26,14 @@ One shard contains one postgres schema. Its automatically created if not exist.
 Define some models, that implements `Storable` interface:
 ```go
 type BasicModel struct {
-	ID       pgparty.UUIDv4                `json:"id"`
+	ID       pgparty.UUID[BasicModel]      `json:"id"`
 	Data     pgparty.NullJsonB             `json:"data"`
 	AppXID   pgparty.XID[pgparty.AppXID]   `json:"appId"`
 	TraceXID pgparty.XID[pgparty.TraceXID] `json:"traceId"`
 }
 
 func (BasicModel) StoreName() string { return "basic_models" }
+func (BasicModel) UUIDPrefix() string { return "basic_model_" }
 ```
 
 Now, register some models in shard:
@@ -81,7 +82,7 @@ Future migrations use this '_config' table for building differencies as ALTER DD
 Next time, create a model element
 ```go
 el := BasicModel{
-	ID: pgparty.UUIDNewV4(),
+	ID: pgparty.NewUUID[BasicModel](),
 	Data: *pgparty.NewNullJsonB(map[string]any{
 		"field1": "string data",
 		"field2": 1344,

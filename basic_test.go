@@ -11,13 +11,15 @@ import (
 )
 
 type BasicModel struct {
-	ID       pgparty.UUIDv4                `json:"id"`
+	ID       pgparty.UUID[BasicModel]      `json:"id"`
 	Data     pgparty.NullJsonB             `json:"data"`
 	AppXID   pgparty.XID[pgparty.AppXID]   `json:"appId" unikey:"appidx" key:"traceappidx"`
 	TraceXID pgparty.XID[pgparty.TraceXID] `json:"traceId" key:"traceappidx"`
 }
 
 func (BasicModel) StoreName() string { return "basic_models" }
+
+func (BasicModel) UUIDPrefix() string { return "basic_model_" }
 
 func TestBasicUsage(t *testing.T) {
 	if db == nil {
@@ -62,7 +64,7 @@ func TestBasicUsage(t *testing.T) {
 
 	// create a model element
 	el := BasicModel{
-		ID: pgparty.UUIDNewV4(),
+		ID: pgparty.NewUUID[BasicModel](),
 		Data: *pgparty.NewNullJsonB(map[string]any{
 			"field1": "string data",
 			"field2": 1344,
