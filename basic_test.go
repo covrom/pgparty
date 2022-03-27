@@ -3,6 +3,7 @@ package pgparty_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/covrom/pgparty"
@@ -10,8 +11,10 @@ import (
 )
 
 type BasicModel struct {
-	ID   pgparty.UUIDv4    `json:"id"`
-	Data pgparty.NullJsonB `json:"data"`
+	ID       pgparty.UUIDv4                `json:"id"`
+	Data     pgparty.NullJsonB             `json:"data"`
+	AppXID   pgparty.XID[pgparty.AppXID]   `json:"appId"`
+	TraceXID pgparty.XID[pgparty.TraceXID] `json:"traceId"`
 }
 
 func (BasicModel) StoreName() string { return "basic_models" }
@@ -57,6 +60,8 @@ func TestBasicUsage(t *testing.T) {
 			"field2": 1344,
 			"field3": pgparty.NowUTC(),
 		}),
+		AppXID:   pgparty.NewXID[pgparty.AppXID](),
+		TraceXID: pgparty.NewXID[pgparty.TraceXID](),
 	}
 
 	// replace it in database by id
@@ -92,6 +97,13 @@ func TestBasicUsage(t *testing.T) {
 	dm2, _ := el.Data.MarshalJSON()
 	if !bytes.Equal(dm1, dm2) {
 		t.Errorf("pgparty.Select error: !bytes.Equal(dm1, dm2): %q != %q", string(dm1), string(dm2))
+		return
+	}
+
+	mval, _ := json.Marshal(els[0])
+	mraw, _ := json.Marshal(el)
+	if !bytes.Equal(mval, mraw) {
+		t.Errorf("pgparty.Select error: !bytes.Equal(dm1, dmraw): %q != %q", string(mval), string(mraw))
 		return
 	}
 }

@@ -26,8 +26,10 @@ One shard contains one postgres schema. Its automatically created if not exist.
 Define some models, that implements `Storable` interface:
 ```go
 type BasicModel struct {
-	ID   pgparty.UUIDv4    `json:"id"`
-	Data pgparty.NullJsonB `json:"data"`
+	ID       pgparty.UUIDv4                `json:"id"`
+	Data     pgparty.NullJsonB             `json:"data"`
+	AppXID   pgparty.XID[pgparty.AppXID]   `json:"appId"`
+	TraceXID pgparty.XID[pgparty.TraceXID] `json:"traceId"`
 }
 
 func (BasicModel) StoreName() string { return "basic_models" }
@@ -72,6 +74,8 @@ el := BasicModel{
 		"field2": 1344,
 		"field3": pgparty.NowUTC(),
 	}),
+    AppXID:   pgparty.NewXID[pgparty.AppXID](),
+    TraceXID: pgparty.NewXID[pgparty.TraceXID](),
 }
 ```
 

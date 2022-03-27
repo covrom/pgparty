@@ -52,7 +52,19 @@ var defaultSQLKindValues = map[reflect.Kind]string{
 	reflect.String:  `''`,
 }
 
+type PostgresTyper interface {
+	PostgresType() string
+}
+
 func SQLType(ft reflect.Type, ln, prec int) string {
+	deepft := ft
+	for deepft.Kind() == reflect.Ptr {
+		deepft = deepft.Elem()
+	}
+	if deepft.Implements(reflect.TypeOf((*PostgresTyper)(nil)).Elem()) {
+		v := reflect.New(deepft).Elem().Interface().(PostgresTyper)
+		return v.PostgresType()
+	}
 	if ft.Kind() == reflect.Slice {
 		if ft.Elem().Kind() == reflect.Uint8 {
 			if ft == reflect.TypeOf(Decimal{}) {
