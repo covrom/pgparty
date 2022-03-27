@@ -3,6 +3,7 @@ package pgparty
 import (
 	"bytes"
 	"database/sql/driver"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -98,6 +99,28 @@ func (u *UUID[T]) Scan(src interface{}) error {
 	default:
 		return fmt.Errorf("Scan: unable to scan type %T into UUID", src)
 	}
+}
+
+func (u UUID[T]) IsZero() bool {
+	return binary.BigEndian.Uint64(u.UUID[0:8]) == 0 && binary.BigEndian.Uint64(u.UUID[8:16]) == 0
+}
+
+func (u *UUID[T]) ConvertFrom(v interface{}) error {
+	if v == nil {
+		return nil
+	}
+	switch vv := v.(type) {
+	case UUIDv4:
+		*u = UUID[T](vv)
+		return nil
+	case *UUIDv4:
+		*u = *(*UUID[T])(vv)
+		return nil
+	}
+	if err := u.Scan(v); err != nil {
+		return err
+	}
+	return nil
 }
 
 type UUIDJsonTyped[T UUIDType] UUID[T]
