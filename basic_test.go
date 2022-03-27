@@ -147,4 +147,18 @@ func TestBasicUsage(t *testing.T) {
 		t.Errorf("jv.UUID != el.ID.UUID: %s != %s", jv.UUID.String(), el.ID.UUID.String())
 		return
 	}
+
+	jelb, err := json.Marshal(el.ID.UUID)
+	if err != nil {
+		t.Errorf("json.Marshal(el.ID.UUID) error: %s", err)
+		return
+	}
+	if err := (&jv).UnmarshalJSON(jelb); err != nil {
+		t.Errorf("(&jv).UnmarshalJSON(jelb) error: %s", err)
+		return
+	}
+	if jv.UUID != el.ID.UUID {
+		t.Errorf("jv.UUID != el.ID.UUID: %s != %s", jv.UUID.String(), el.ID.UUID.String())
+		return
+	}
 }
