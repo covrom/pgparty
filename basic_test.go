@@ -13,8 +13,8 @@ import (
 type BasicModel struct {
 	ID       pgparty.UUIDv4                `json:"id"`
 	Data     pgparty.NullJsonB             `json:"data"`
-	AppXID   pgparty.XID[pgparty.AppXID]   `json:"appId"`
-	TraceXID pgparty.XID[pgparty.TraceXID] `json:"traceId"`
+	AppXID   pgparty.XID[pgparty.AppXID]   `json:"appId" unikey:"appidx" key:"traceappidx"`
+	TraceXID pgparty.XID[pgparty.TraceXID] `json:"traceId" key:"traceappidx"`
 }
 
 func (BasicModel) StoreName() string { return "basic_models" }
@@ -41,14 +41,22 @@ func TestBasicUsage(t *testing.T) {
 		return
 	}
 	// this produces sql queries:
-	// CREATE TABLE shard1.basic_models (data jsonb,id UUID NOT NULL,PRIMARY KEY (id))
+	// CREATE TABLE shard1.basic_models (app_xid CHAR(20) NOT NULL,data jsonb,id UUID NOT NULL,trace_xid CHAR(20) NOT NULL,PRIMARY KEY (id))
+	// CREATE UNIQUE INDEX basic_modelsappidx ON shard1.basic_models(app_xid )
+	// CREATE INDEX basic_modelstraceappidx ON shard1.basic_models(app_xid, trace_xid )
 	// INSERT INTO shard1._config (table_name,storej)
 	// 	VALUES($1,$2) ON CONFLICT(table_name) DO
 	// 	UPDATE SET storej=excluded.storej
 
 	// $1 =  basic_models ,
-	// $2 =  {"table":"basic_models","cols":[{"ColName":"data","DataType":"jsonb","DefaultValue":"","NotNull":false,"PrimaryKey":false},
-	// {"ColName":"id","DataType":"UUID","DefaultValue":"","NotNull":true,"PrimaryKey":true}]}
+	// $2 =  {"table":"basic_models","cols":[
+	// {"ColName":"app_xid","DataType":"CHAR(20)","DefaultValue":"","NotNull":true,"PrimaryKey":false},
+	// {"ColName":"data","DataType":"jsonb","DefaultValue":"","NotNull":false,"PrimaryKey":false},
+	// {"ColName":"id","DataType":"UUID","DefaultValue":"","NotNull":true,"PrimaryKey":true},
+	// {"ColName":"trace_xid","DataType":"CHAR(20)","DefaultValue":"","NotNull":true,"PrimaryKey":false}],
+	// "idxs":[
+	// {"name":"appidx","isUnique":true,"columns":["app_xid"]},
+	// {"name":"traceappidx","columns":["app_xid","trace_xid"]}]}
 
 	// future migrations use this '_config' table for building differencies as ALTER DDL queries
 
@@ -72,7 +80,7 @@ func TestBasicUsage(t *testing.T) {
 		return
 	}
 	// this produces sql queries:
-	// INSERT INTO shard1.basic_models (id,data) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET data=excluded.data
+	// INSERT INTO shard1.basic_models (id,data,app_xid,trace_xid) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET (data,app_xid,trace_xid)=(excluded.data,excluded.app_xid,excluded.trace_xid)
 
 	// select stored data from model table
 	var els []BasicModel
