@@ -148,7 +148,12 @@ func (u UUIDJsonTyped[T]) MarshalJSON() ([]byte, error) {
 func (u *UUIDJsonTyped[T]) UnmarshalJSON(b []byte) error {
 	var resourceType T
 	prefix := resourceType.UUIDPrefix()
-	b = bytes.TrimPrefix(b, []byte(prefix))
+
+	if len(b) > len(prefix)+1 && bytes.Equal([]byte(prefix), b[1:1+len(prefix)]) {
+		copy(b[1:], b[1+len(prefix):])
+		b = b[:len(b)-len(prefix)]
+	}
+
 	if len(b) == 0 || bytes.EqualFold(b, []byte("null")) || bytes.EqualFold(b, []byte(`""`)) {
 		*u = UUIDJsonTyped[T](UUIDv4{})
 		return nil

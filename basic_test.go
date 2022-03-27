@@ -136,6 +136,15 @@ func TestBasicUsage(t *testing.T) {
 	if !bytes.Equal(jstb, jstb2) {
 		t.Errorf("jstb not bytes.Equal: %s != %s", string(jstb), string(jstb2))
 		return
+	}
 
+	jv := pgparty.UUIDJsonTyped[BasicModel]{}
+	if err := (&jv).UnmarshalJSON(jstb); err != nil {
+		t.Errorf("(&jv).UnmarshalJSON(jstb) error: %s", err)
+		return
+	}
+	if jv.UUID != el.ID.UUID {
+		t.Errorf("jv.UUID != el.ID.UUID: %s != %s", jv.UUID.String(), el.ID.UUID.String())
+		return
 	}
 }
