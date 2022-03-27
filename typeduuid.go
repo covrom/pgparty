@@ -116,6 +116,12 @@ func (u *UUID[T]) ConvertFrom(v interface{}) error {
 	case *UUIDv4:
 		*u = *(*UUID[T])(vv)
 		return nil
+	case UUID[T]:
+		*u = vv
+		return nil
+	case *UUID[T]:
+		*u = *vv
+		return nil
 	}
 	if err := u.Scan(v); err != nil {
 		return err
