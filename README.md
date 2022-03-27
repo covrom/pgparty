@@ -81,7 +81,7 @@ Future migrations use this '_config' table for building differencies as ALTER DD
 Next time, create a model element
 ```go
 el := BasicModel{
-	ID: pgparty.NewV4(),
+	ID: pgparty.UUIDNewV4(),
 	Data: *pgparty.NewNullJsonB(map[string]any{
 		"field1": "string data",
 		"field2": 1344,

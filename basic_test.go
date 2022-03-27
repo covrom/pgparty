@@ -62,7 +62,7 @@ func TestBasicUsage(t *testing.T) {
 
 	// create a model element
 	el := BasicModel{
-		ID: pgparty.NewV4(),
+		ID: pgparty.UUIDNewV4(),
 		Data: *pgparty.NewNullJsonB(map[string]any{
 			"field1": "string data",
 			"field2": 1344,

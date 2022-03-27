@@ -98,13 +98,18 @@ func (u *UUIDv4) GobDecode(data []byte) error {
 	return (&(u.UUID)).UnmarshalBinary(data)
 }
 
-func NewV4() UUIDv4 {
+func UUIDNewV4() UUIDv4 {
 	return UUIDv4{uuid.New()}
 }
 
-func FromString(s string) (UUIDv4, error) {
+func UUIDFromString(s string) (UUIDv4, error) {
 	id, err := uuid.Parse(s)
 	return UUIDv4{id}, err
+}
+
+func UUIDMustFromString(s string) UUIDv4 {
+	id := uuid.MustParse(s)
+	return UUIDv4{id}
 }
 
 // store.Converter interface, u must contain zero value before call
