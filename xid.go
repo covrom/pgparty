@@ -14,18 +14,6 @@ type XIDType interface {
 	XIDPrefix() string
 }
 
-type AppXID struct{}
-
-func (u AppXID) XIDPrefix() string { return "app_" }
-
-type TraceXID struct{}
-
-func (a TraceXID) XIDPrefix() string { return "trace_" }
-
-type SomeXID struct{}
-
-func (u SomeXID) XIDPrefix() string { return "" }
-
 type XID[T XIDType] xid.ID
 
 func NewXID[T XIDType]() XID[T] { return XID[T](xid.New()) }
@@ -101,3 +89,15 @@ func (u *XID[T]) Scan(src interface{}) error {
 		return fmt.Errorf("Scan: unable to scan type %T into XID", src)
 	}
 }
+
+type AppXID struct{}
+
+func (u AppXID) XIDPrefix() string { return "app_" }
+
+type TraceXID struct{}
+
+func (a TraceXID) XIDPrefix() string { return "trace_" }
+
+type SomeXID struct{}
+
+func (u SomeXID) XIDPrefix() string { return "" }

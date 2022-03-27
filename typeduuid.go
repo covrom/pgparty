@@ -13,18 +13,6 @@ type UUIDType interface {
 	UUIDPrefix() string
 }
 
-type AppUUID struct{}
-
-func (u AppUUID) IDPrefix() string { return "app_" }
-
-type TraceUUID struct{}
-
-func (a TraceUUID) IDPrefix() string { return "trace_" }
-
-type SomeUUID struct{}
-
-func (u SomeUUID) IDPrefix() string { return "" }
-
 type UUID[T UUIDType] UUIDv4
 
 func NewUUID[T UUIDType]() UUID[T] { return UUID[T](UUIDNewV4()) }
@@ -161,3 +149,15 @@ func (u *UUIDJsonTyped[T]) UnmarshalJSON(b []byte) error {
 	v := (*UUIDv4)(u)
 	return json.Unmarshal(b, v)
 }
+
+type AppUUID struct{}
+
+func (u AppUUID) IDPrefix() string { return "app_" }
+
+type TraceUUID struct{}
+
+func (a TraceUUID) IDPrefix() string { return "trace_" }
+
+type SomeUUID struct{}
+
+func (u SomeUUID) IDPrefix() string { return "" }
