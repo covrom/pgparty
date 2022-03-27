@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/covrom/pgparty"
@@ -110,10 +111,31 @@ func TestBasicUsage(t *testing.T) {
 		return
 	}
 
-	mval, _ := json.Marshal(els[0])
-	mraw, _ := json.Marshal(el)
+	mval, err := json.Marshal(els[0])
+	if err != nil {
+		t.Errorf("json.Marshal(els[0]) error: %s", err)
+		return
+	}
+	mraw, err := json.Marshal(el)
+	if err != nil {
+		t.Errorf("json.Marshal(el) error: %s", err)
+		return
+	}
 	if !bytes.Equal(mval, mraw) {
 		t.Errorf("pgparty.Select error: !bytes.Equal(dm1, dmraw): %q != %q", string(mval), string(mraw))
 		return
+	}
+
+	jst := pgparty.UUIDJsonTyped[BasicModel](el.ID)
+	jstb, err := json.Marshal(jst)
+	if err != nil {
+		t.Errorf("json.Marshal(jst) error: %s", err)
+		return
+	}
+	jstb2 := []byte(fmt.Sprintf(`"%s"`, el.ID.String()))
+	if !bytes.Equal(jstb, jstb2) {
+		t.Errorf("jstb not bytes.Equal: %s != %s", string(jstb), string(jstb2))
+		return
+
 	}
 }

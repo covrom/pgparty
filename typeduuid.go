@@ -99,3 +99,31 @@ func (u *UUID[T]) Scan(src interface{}) error {
 		return fmt.Errorf("Scan: unable to scan type %T into UUID", src)
 	}
 }
+
+type UUIDJsonTyped[T UUIDType] UUID[T]
+
+func (u UUIDJsonTyped[T]) MarshalJSON() ([]byte, error) {
+	res, err := json.Marshal(UUIDv4(u))
+	if err != nil {
+		return res, err
+	}
+	var resourceType T
+	prefix := resourceType.UUIDPrefix()
+	ret := make([]byte, len(prefix)+len(res))
+	ret[0] = res[0]
+	copy(ret[1:], prefix)
+	copy(ret[1+len(prefix):], res[1:])
+	return ret, nil
+}
+
+func (u *UUIDJsonTyped[T]) UnmarshalJSON(b []byte) error {
+	var resourceType T
+	prefix := resourceType.UUIDPrefix()
+	b = bytes.TrimPrefix(b, []byte(prefix))
+	if len(b) == 0 || bytes.EqualFold(b, []byte("null")) || bytes.EqualFold(b, []byte(`""`)) {
+		*u = UUIDJsonTyped[T](UUIDv4{})
+		return nil
+	}
+	v := (*UUIDv4)(u)
+	return json.Unmarshal(b, v)
+}
