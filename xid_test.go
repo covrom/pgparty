@@ -2,6 +2,7 @@ package pgparty_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -68,6 +69,11 @@ func TestXID(t *testing.T) {
 		return
 	}
 
+	if err := (&newXID).UnmarshalJSON([]byte(`"c900cfj8ejjd3nqe1o30"`)); err != nil {
+		t.Errorf("Scan error: %s", err)
+		return
+	}
+
 	if err := (&newXID).Scan([]byte("c900cfj8ejjd3nqe1o30")); err != nil {
 		t.Errorf("Scan error: %s", err)
 		return
@@ -100,6 +106,25 @@ func TestXID(t *testing.T) {
 
 	if v, err := nilXID.Value(); err != nil || v != nil {
 		t.Errorf("nilXID.Value not nil, but %#v", v)
+		return
+	}
+
+	var jxid pgparty.XIDJsonTyped[myXID]
+	if err := (&jxid).UnmarshalJSON([]byte(`"c900cfj8ejjd3nqe1o30"`)); err != nil {
+		t.Errorf("Scan error: %s", err)
+		return
+	}
+	if err := (&jxid).UnmarshalJSON([]byte(`"myxid_c900cfj8ejjd3nqe1o30"`)); err != nil {
+		t.Errorf("Scan error: %s", err)
+		return
+	}
+	jsid, err := json.Marshal(jxid)
+	if err != nil {
+		t.Errorf("json.Marshal(jxid) error: %s", err)
+		return
+	}
+	if string(jsid) != `"myxid_c900cfj8ejjd3nqe1o30"` {
+		t.Errorf(`jsid error: %s != "myxid_c900cfj8ejjd3nqe1o30"`, string(jsid))
 		return
 	}
 }

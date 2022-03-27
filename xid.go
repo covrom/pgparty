@@ -90,6 +90,39 @@ func (u *XID[T]) Scan(src interface{}) error {
 	}
 }
 
+type XIDJsonTyped[T XIDType] XID[T]
+
+func (u XIDJsonTyped[T]) MarshalJSON() ([]byte, error) {
+	res, err := json.Marshal(XID[T](u))
+	if err != nil {
+		return res, err
+	}
+	var resourceType T
+	prefix := resourceType.XIDPrefix()
+	ret := make([]byte, len(prefix)+len(res))
+	ret[0] = res[0]
+	copy(ret[1:], prefix)
+	copy(ret[1+len(prefix):], res[1:])
+	return ret, nil
+}
+
+func (u *XIDJsonTyped[T]) UnmarshalJSON(b []byte) error {
+	var resourceType T
+	prefix := resourceType.XIDPrefix()
+
+	if len(b) > len(prefix)+1 && bytes.Equal([]byte(prefix), b[1:1+len(prefix)]) {
+		copy(b[1:], b[1+len(prefix):])
+		b = b[:len(b)-len(prefix)]
+	}
+
+	if len(b) == 0 || bytes.EqualFold(b, []byte("null")) || bytes.EqualFold(b, []byte(`""`)) {
+		*u = XIDJsonTyped[T](XID[T]{})
+		return nil
+	}
+	v := (*XID[T])(u)
+	return json.Unmarshal(b, v)
+}
+
 type AppXID struct{}
 
 func (u AppXID) XIDPrefix() string { return "app_" }
