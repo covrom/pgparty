@@ -45,7 +45,7 @@ func (id UUID[T]) String() string {
 	return fmt.Sprintf(
 		"%s%s",
 		resourceType.UUIDPrefix(), // Extract the "prefix" we want from the resource type
-		UUIDv4(id).String(),       // Use XID's string marshalling
+		UUIDv4(id).String(),       // Use ID's string marshalling
 	)
 }
 
