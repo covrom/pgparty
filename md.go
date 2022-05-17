@@ -100,7 +100,7 @@ func (md *ModelDesc) WalkColumnPtrs(f func(i int, v *FieldDescription) error) er
 	return nil
 }
 
-// GetColumnByFieldName - найти описание поля по его имени
+// GetColumnByFieldName - get fd by struct field name
 func (md ModelDesc) ColumnByFieldName(fieldName string) (*FieldDescription, error) {
 	field, ok := md.columnByFieldName[fieldName]
 	if !ok {
@@ -109,8 +109,7 @@ func (md ModelDesc) ColumnByFieldName(fieldName string) (*FieldDescription, erro
 	return field, nil
 }
 
-// GetColumnsByFieldNames - найти описание полей по именам.
-// Если поле не найдено, вызывается panic
+// GetColumnsByFieldNames - get fd's by struct field name
 func (md ModelDesc) ColumnsByFieldNames(fieldNames ...string) (res []*FieldDescription) {
 	for _, fieldName := range fieldNames {
 		field, ok := md.columnByFieldName[fieldName]
@@ -233,4 +232,8 @@ func fillColumns(typ reflect.Type, columns *[]FieldDescription) error {
 func (md ModelDesc) CreateSlicePtr() interface{} {
 	slt := reflect.SliceOf(md.modelType)
 	return reflect.New(slt).Interface()
+}
+
+func (md ModelDesc) CreateElemPtr() interface{} {
+	return reflect.New(md.modelType).Interface()
 }
