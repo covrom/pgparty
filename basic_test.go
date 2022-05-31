@@ -104,6 +104,17 @@ func TestBasicUsage(t *testing.T) {
 		t.Errorf("pgparty.Select error: els[0].Data.Valid != el.Data.Valid: %v != %v", els[0].Data.Valid, el.Data.Valid)
 		return
 	}
+
+	fld, err := pgparty.Field(pgparty.WithShard(ctx, shard), els[0], "ID", BasicModel{}.ID)
+	if err != nil {
+		t.Errorf("pgparty.FieldT error: %s", err)
+		return
+	}
+	if fld != el.ID {
+		t.Errorf("pgparty.FieldT error: fld != el.ID: %s != %s", fld, el.ID)
+		return
+	}
+
 	dm1, _ := els[0].Data.MarshalJSON()
 	dm2, _ := el.Data.MarshalJSON()
 	if !bytes.Equal(dm1, dm2) {

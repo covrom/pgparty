@@ -10,12 +10,17 @@ import (
 )
 
 // get field value by struct field name
-func Field[T Storable](ctx context.Context, modelItem T, fieldName string) (interface{}, error) {
+// defval must be Model{}.Field
+func Field[T Storable, F any](ctx context.Context, modelItem T, fieldName string, defval F) (F, error) {
 	s, err := ShardFromContext(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Field: %w", err)
+		return defval, fmt.Errorf("FieldT: %w", err)
 	}
-	return s.Store.Field(modelItem, fieldName)
+	v, err := s.Store.Field(modelItem, fieldName)
+	if err != nil {
+		return defval, fmt.Errorf("FieldT: %w", err)
+	}
+	return v.(F), nil
 }
 
 // get field value by struct field name
