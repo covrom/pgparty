@@ -105,7 +105,7 @@ func TestBasicUsage(t *testing.T) {
 		return
 	}
 
-	fld, err := pgparty.Field(pgparty.WithShard(ctx, shard), els[0], "ID", BasicModel{}.ID)
+	fld, err := pgparty.Field(pgparty.WithShard(ctx, shard), els[0], BasicModel{}.ID, "ID")
 	if err != nil {
 		t.Errorf("pgparty.FieldT error: %s", err)
 		return

@@ -11,7 +11,7 @@ import (
 
 // get field value by struct field name
 // defval must be Model{}.Field
-func Field[T Storable, F any](ctx context.Context, modelItem T, fieldName string, defval F) (F, error) {
+func Field[T Storable, F any](ctx context.Context, modelItem T, defval F, fieldName string) (F, error) {
 	s, err := ShardFromContext(ctx)
 	if err != nil {
 		return defval, fmt.Errorf("FieldT: %w", err)
