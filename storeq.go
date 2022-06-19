@@ -5,6 +5,9 @@ import (
 	"fmt"
 )
 
+// TODO: https://github.com/0x1000000/SqExpress
+// https://itnext.io/filtering-by-dynamic-attributes-90ada3504361
+
 func (s *PgStore) Select(ctx context.Context) *PgSelect {
 	return &PgSelect{
 		st: s,
