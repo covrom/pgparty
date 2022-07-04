@@ -1,6 +1,8 @@
 package pgparty
 
 import (
+	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -163,4 +165,52 @@ func (fd *FieldDescription) MarshalText() (text []byte, err error) {
 		return []byte("null"), nil
 	}
 	return []byte(fd.JsonName), nil
+}
+
+type Valuer interface {
+	Value() (driver.Value, error)
+}
+type Scanner[T any] interface {
+	*T
+	Scan(src any) error
+}
+
+type FD[T Valuer, PT Scanner[T]] struct {
+	V     T
+	Valid bool
+	fd    *FieldDescription
+}
+
+func (fdt *FD[T, PT]) FD() *FieldDescription {
+	if fdt.fd != nil {
+		return fdt.fd
+	}
+	panic(fmt.Sprintf("%T - fd not initialized", fdt))
+}
+
+func NewFD[T Valuer, PT Scanner[T]](structField reflect.StructField) *FD[T, PT] {
+	var d interface{} = new(T)
+	if _, ok := d.(sql.Scanner); !ok {
+		panic(fmt.Sprintf("%T not implements sql.Scanner", d.(*T)))
+	}
+	return &FD[T, PT]{
+		fd:    NewFieldDescription(structField),
+		V:     *(new(T)),
+		Valid: false,
+	}
+}
+
+func (n *FD[T, PT]) Scan(value any) error {
+	if value == nil {
+		n.V, n.Valid = *(new(T)), false
+		return nil
+	}
+	d := PT(new(T))
+	err := d.Scan(value)
+	if err != nil {
+		return err
+	}
+	n.Valid = true
+	n.V = *(d)
+	return nil
 }
