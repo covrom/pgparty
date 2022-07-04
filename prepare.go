@@ -45,6 +45,18 @@ func Get[T Storable](ctx context.Context, query string, dest *T, args ...interfa
 	return s.Store.PrepGet(ctx, query, dest, args...)
 }
 
+func GetByID[T Storable](ctx context.Context, dest *T, id interface{}) error {
+	s, err := ShardFromContext(ctx)
+	if err != nil {
+		_, file, no, ok := runtime.Caller(1)
+		if ok {
+			log.Printf("Get error at %s line %d: %s", file, no, err)
+		}
+		return fmt.Errorf("Get: %w", err)
+	}
+	return s.Store.PrepGet(ctx, fmt.Sprintf("SELECT * FROM %s WHERE id = ?", (*new(T)).StoreName()), dest, id)
+}
+
 func (sr *PgStore) PrepGet(ctx context.Context, query string, dest interface{}, args ...interface{}) error {
 	if sr.tx == nil {
 		return sr.WithTx(ctx, func(stx *PgStore) error {
