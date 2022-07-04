@@ -56,11 +56,11 @@ func (m MD[T]) MD() (*ModelDesc, error) {
 	return md, nil
 }
 
-type ModelDescriptorer interface {
+type ModelDescriber interface {
 	MD() (*ModelDesc, error)
 }
 
-func Register[T ModelDescriptorer](sh Shard, m T) error {
+func Register[T ModelDescriber](sh Shard, m T) error {
 	md, err := m.MD()
 	if err != nil {
 		return fmt.Errorf("init ModelDesc failed: %w", err)
@@ -225,6 +225,10 @@ func NewModelDescription[T Storable](m T) (*ModelDesc, error) {
 	return &modelDescription, nil
 }
 
+type FieldDescriber interface {
+	FD() *FieldDescription
+}
+
 func fillColumns(typ reflect.Type, columns *[]FieldDescription) error {
 	if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
@@ -247,7 +251,11 @@ func fillColumns(typ reflect.Type, columns *[]FieldDescription) error {
 			continue
 		}
 
-		if column := NewFieldDescription(structField); column != nil {
+		ft := structField.Type
+		if ft.Implements(reflect.TypeOf((*FieldDescriber)(nil)).Elem()) {
+			v := reflect.New(ft).Elem().Interface().(FieldDescriber)
+			*columns = append(*columns, *v.FD())
+		} else if column := NewFieldDescription(structField); column != nil {
 			*columns = append(*columns, *column)
 		}
 	}
