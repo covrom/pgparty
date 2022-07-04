@@ -3,9 +3,19 @@ package pgparty
 import (
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/covrom/pgparty/utils"
 )
+
+type mdMap struct {
+	sync.RWMutex
+	m map[reflect.Type]*ModelDesc
+}
+
+var mdRepo = mdMap{
+	m: make(map[reflect.Type]*ModelDesc),
+}
 
 type MD[T Storable] struct {
 	val T
@@ -17,6 +27,20 @@ func (m MD[T]) MD() (*ModelDesc, error) {
 		return nil, fmt.Errorf("only structs are supported: %s is not a struct", value.Type())
 	}
 	modelType := value.Type()
+	mdRepo.RLock()
+	if ret, ok := mdRepo.m[modelType]; ok {
+		mdRepo.RUnlock()
+		return ret, nil
+	}
+	mdRepo.RUnlock()
+
+	mdRepo.Lock()
+	defer mdRepo.Unlock()
+
+	if ret, ok := mdRepo.m[modelType]; ok {
+		return ret, nil
+	}
+
 	storeName := m.val.StoreName()
 
 	md := &ModelDesc{
@@ -27,6 +51,8 @@ func (m MD[T]) MD() (*ModelDesc, error) {
 	if err := md.init(); err != nil {
 		return nil, fmt.Errorf("init ModelDesc failed: %s", err)
 	}
+
+	mdRepo.m[modelType] = md
 	return md, nil
 }
 
