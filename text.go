@@ -18,6 +18,10 @@ func (u Text) PostgresType() string {
 	return "TEXT"
 }
 
+func (u Text) PostgresDefaultValue() string {
+	return ``
+}
+
 func (u Text) Value() (driver.Value, error) {
 	return []byte(u), nil
 }

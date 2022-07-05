@@ -18,6 +18,10 @@ func (u NullText) PostgresType() string {
 	return "TEXT"
 }
 
+func (u NullText) PostgresDefaultValue() string {
+	return ``
+}
+
 func (n NullText) MarshalJSON() ([]byte, error) {
 	if !n.Valid {
 		return json.Marshal(nil)
