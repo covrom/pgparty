@@ -1,6 +1,7 @@
 package pgparty
 
 import (
+	"database/sql/driver"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,30 @@ func init() {
 }
 
 type Text string
+
+func (u Text) Value() (driver.Value, error) {
+	return []byte(u), nil
+}
+
+func (u *Text) Scan(src interface{}) error {
+	switch src := src.(type) {
+	case nil:
+		return nil
+
+	case string:
+		if src == "" {
+			return nil
+		}
+		*u = Text(src)
+	case []byte:
+		if len(src) == 0 {
+			return nil
+		}
+		*u = Text(src)
+	}
+
+	return fmt.Errorf("Scan: unable to scan type %T into Text", src)
+}
 
 func (s *Text) ConvertFrom(v interface{}) error {
 	if v == nil {

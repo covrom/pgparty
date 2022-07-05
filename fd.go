@@ -1,8 +1,10 @@
 package pgparty
 
 import (
+	"bytes"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -213,4 +215,28 @@ func (n *FD[T, PT]) Scan(value any) error {
 	n.Valid = true
 	n.V = *(d)
 	return nil
+}
+
+func (nt FD[T, PT]) Value() (driver.Value, error) {
+	if !nt.Valid {
+		return nil, nil
+	}
+	return nt.V.Value()
+}
+
+func (n FD[T, PT]) MarshalJSON() ([]byte, error) {
+	if !n.Valid {
+		return json.Marshal(nil)
+	}
+	return json.Marshal(n.V)
+}
+
+func (n *FD[T, PT]) UnmarshalJSON(b []byte) error {
+	if bytes.EqualFold(b, []byte("null")) {
+		n.V, n.Valid = *(new(T)), false
+		return nil
+	}
+	err := json.Unmarshal(b, &n.V)
+	n.Valid = (err == nil)
+	return err
 }
