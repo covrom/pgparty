@@ -118,3 +118,25 @@ func SQLType(ft reflect.Type, ln, prec int) string {
 	}
 	return sqlTypesMap[ft.Kind()]
 }
+
+type PostgresDefaultValuer interface {
+	PostgresDefaultValue() string
+}
+
+func SQLDefaultValue(ft reflect.Type) string {
+	var ret string
+	deepft := ft
+	for deepft.Kind() == reflect.Ptr {
+		deepft = deepft.Elem()
+	}
+	if deepft.Implements(reflect.TypeOf((*PostgresDefaultValuer)(nil)).Elem()) {
+		v := reflect.New(deepft).Elem().Interface().(PostgresDefaultValuer)
+		return v.PostgresDefaultValue()
+	}
+	if dv, ok := defaultSQLValues[ft]; ok {
+		ret = dv
+	} else {
+		ret = defaultSQLKindValues[ft.Kind()]
+	}
+	return ret
+}

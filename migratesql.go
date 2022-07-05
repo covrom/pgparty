@@ -43,11 +43,7 @@ func Field2SQLColumn(f FieldDescription) (modelcols.SQLColumn, modelcols.SQLInde
 	if len(f.DefVal) > 0 {
 		sqc.DefaultValue = f.DefVal
 	} else if sqc.NotNull && !sqc.PrimaryKey {
-		if dv, ok := defaultSQLValues[ft]; ok {
-			sqc.DefaultValue = dv
-		} else {
-			sqc.DefaultValue = defaultSQLKindValues[ft.Kind()]
-		}
+		sqc.DefaultValue = SQLDefaultValue(ft)
 	}
 
 	for _, idx := range f.Indexes {

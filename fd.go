@@ -171,6 +171,7 @@ func (fd *FieldDescription) MarshalText() (text []byte, err error) {
 
 type Valuer interface {
 	Value() (driver.Value, error)
+	PostgresType() string
 }
 type Scanner[T any] interface {
 	*T
@@ -217,11 +218,11 @@ func (n *FD[T, PT]) Scan(value any) error {
 	return nil
 }
 
-func (nt FD[T, PT]) Value() (driver.Value, error) {
-	if !nt.Valid {
+func (n FD[T, PT]) Value() (driver.Value, error) {
+	if !n.Valid {
 		return nil, nil
 	}
-	return nt.V.Value()
+	return n.V.Value()
 }
 
 func (n FD[T, PT]) MarshalJSON() ([]byte, error) {
@@ -239,4 +240,8 @@ func (n *FD[T, PT]) UnmarshalJSON(b []byte) error {
 	err := json.Unmarshal(b, &n.V)
 	n.Valid = (err == nil)
 	return err
+}
+
+func (n FD[T, PT]) PostgresType() string {
+	return (*(new(T))).PostgresType()
 }

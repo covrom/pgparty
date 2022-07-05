@@ -14,6 +14,10 @@ func init() {
 
 type Text string
 
+func (u Text) PostgresType() string {
+	return "TEXT"
+}
+
 func (u Text) Value() (driver.Value, error) {
 	return []byte(u), nil
 }
