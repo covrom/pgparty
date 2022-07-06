@@ -27,10 +27,6 @@ var sqlTypesMap = map[reflect.Kind]string{
 	reflect.Map:    jsonType,
 }
 
-var defaultSQLValues = map[reflect.Type]string{
-	reflect.TypeOf(Decimal{}): `'0.0'`,
-}
-
 var defaultSQLKindValues = map[reflect.Kind]string{
 	reflect.Bool:    "FALSE",
 	reflect.Int:     "0",
@@ -63,13 +59,6 @@ func SQLType(ft reflect.Type, ln, prec int) string {
 	}
 	if ft.Kind() == reflect.Slice {
 		if ft.Elem().Kind() == reflect.Uint8 {
-			if ft == reflect.TypeOf(Decimal{}) {
-				// для decimal длина не может быть больше 50 знаков
-				if ln > 50 {
-					ln = 15
-				}
-				return fmt.Sprintf("NUMERIC(%d,%d)", ln, prec)
-			}
 			// []byte, не более 16 Мб
 			return "BYTEA"
 		}
@@ -93,10 +82,7 @@ func SQLDefaultValue(ft reflect.Type) string {
 		v := reflect.New(deepft).Elem().Interface().(PostgresDefaultValuer)
 		return v.PostgresDefaultValue()
 	}
-	if dv, ok := defaultSQLValues[ft]; ok {
-		ret = dv
-	} else {
-		ret = defaultSQLKindValues[ft.Kind()]
-	}
+	ret = defaultSQLKindValues[ft.Kind()]
+
 	return ret
 }
