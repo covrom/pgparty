@@ -18,6 +18,14 @@ type NullTime struct {
 	Valid bool // Valid is true if Time is not NULL
 }
 
+func (u NullTime) PostgresType() string {
+	return "TIMESTAMPTZ"
+}
+
+func (u NullTime) PostgresDefaultValue() string {
+	return `'epoch'`
+}
+
 func (nt *NullTime) Scan(value interface{}) (err error) {
 	if value == nil {
 		nt.Time, nt.Valid = Time{}, false

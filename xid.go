@@ -43,6 +43,11 @@ func (XID[T]) PostgresType() string {
 	return "CHAR(20)"
 }
 
+func (XID[T]) PostgresDefaultValue() string {
+	empty := xid.NilID()
+	return fmt.Sprintf(`'%s'`, empty)
+}
+
 func (u XID[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(xid.ID(u))
 }

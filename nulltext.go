@@ -14,12 +14,12 @@ func init() {
 
 type NullText sql.NullString
 
-func (u NullText) PostgresType() string {
+func (NullText) PostgresType() string {
 	return "TEXT"
 }
 
-func (u NullText) PostgresDefaultValue() string {
-	return ``
+func (NullText) PostgresDefaultValue() string {
+	return `''`
 }
 
 func (n NullText) MarshalJSON() ([]byte, error) {

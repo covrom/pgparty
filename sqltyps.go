@@ -28,11 +28,8 @@ var sqlTypesMap = map[reflect.Kind]string{
 }
 
 var defaultSQLValues = map[reflect.Type]string{
-	reflect.TypeOf(Time{}):        `'epoch'`,
 	reflect.TypeOf(Decimal{}):     `'0.0'`,
-	reflect.TypeOf(Text("")):      ``,
 	reflect.TypeOf(StringArray{}): `'[]'::jsonb`,
-	reflect.TypeOf(UUIDv4Array{}): `'[]'::jsonb`,
 }
 
 var defaultSQLKindValues = map[reflect.Kind]string{
@@ -78,15 +75,7 @@ func SQLType(ft reflect.Type, ln, prec int) string {
 			return "BYTEA"
 		}
 	} else if ft.Kind() == reflect.Struct {
-		if ft == reflect.TypeOf(UUIDv4{}) {
-			return "UUID"
-		} else if ft == reflect.TypeOf(UUIDv4Array{}) {
-			return jsonType
-		} else if ft == reflect.TypeOf(NullTime{}) {
-			return "TIMESTAMPTZ"
-		} else if ft == reflect.TypeOf(Time{}) {
-			return "TIMESTAMPTZ"
-		} else if ft == reflect.TypeOf(NullBool{}) {
+		if ft == reflect.TypeOf(NullBool{}) {
 			return "BOOLEAN"
 		} else if ft == reflect.TypeOf(NullFloat64{}) {
 			return "FLOAT8"
@@ -96,8 +85,6 @@ func SQLType(ft reflect.Type, ln, prec int) string {
 			return "BIGSERIAL"
 		} else if ft == reflect.TypeOf(NullString{}) {
 			return fmt.Sprintf("VARCHAR(%d)", ln)
-		} else if ft == reflect.TypeOf(NullText{}) {
-			return "TEXT"
 		} else if ft == reflect.TypeOf(NullJsonB{}) {
 			return jsonType
 		} else if ft == reflect.TypeOf(JsonB{}) {

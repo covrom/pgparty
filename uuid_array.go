@@ -13,6 +13,14 @@ func init() {
 
 type UUIDv4Array []UUIDv4
 
+func (UUIDv4Array) PostgresType() string {
+	return "JSONB"
+}
+
+func (UUIDv4Array) PostgresDefaultValue() string {
+	return `'[]'::jsonb`
+}
+
 func (a *UUIDv4Array) Raw() []UUIDv4 {
 	return *a
 }

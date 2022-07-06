@@ -27,6 +27,14 @@ const BrowserDateFormat = `"2006-01-02"`
 // datetime-local
 const BrowserDateTimeFormat = `"2006-01-02T15:04"`
 
+func (u Time) PostgresType() string {
+	return "TIMESTAMPTZ"
+}
+
+func (u Time) PostgresDefaultValue() string {
+	return `'epoch'`
+}
+
 func (t Time) MarshalJSON() ([]byte, error) {
 	tt := time.Time(t)
 	if y := tt.Year(); y < 0 || y >= 10000 {

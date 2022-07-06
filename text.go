@@ -14,12 +14,12 @@ func init() {
 
 type Text string
 
-func (u Text) PostgresType() string {
+func (Text) PostgresType() string {
 	return "TEXT"
 }
 
-func (u Text) PostgresDefaultValue() string {
-	return ``
+func (Text) PostgresDefaultValue() string {
+	return `''`
 }
 
 func (u Text) Value() (driver.Value, error) {

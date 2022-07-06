@@ -42,6 +42,11 @@ func (UUID[T]) PostgresType() string {
 	return "UUID"
 }
 
+func (UUID[T]) PostgresDefaultValue() string {
+	var empty UUIDv4 // not typed!
+	return fmt.Sprintf(`'%s'`, empty)
+}
+
 func (u UUID[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(UUIDv4(u))
 }

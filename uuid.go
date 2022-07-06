@@ -19,6 +19,15 @@ func init() {
 	gob.Register(&UUIDv4{})
 }
 
+func (UUIDv4) PostgresType() string {
+	return "UUID"
+}
+
+func (UUIDv4) PostgresDefaultValue() string {
+	var empty UUIDv4
+	return fmt.Sprintf(`'%s'`, empty)
+}
+
 func (u UUIDv4) MarshalJSON() ([]byte, error) {
 	return json.Marshal(u.UUID)
 }

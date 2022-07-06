@@ -2,7 +2,6 @@ package pgparty
 
 import (
 	"bytes"
-	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
@@ -192,10 +191,6 @@ func (fdt *FD[T, PT]) FD() *FieldDescription {
 }
 
 func NewFD[T Valuer, PT Scanner[T]](structField reflect.StructField) *FD[T, PT] {
-	var d interface{} = new(T)
-	if _, ok := d.(sql.Scanner); !ok {
-		panic(fmt.Sprintf("%T not implements sql.Scanner", d.(*T)))
-	}
 	return &FD[T, PT]{
 		fd:    NewFieldDescription(structField),
 		V:     *(new(T)),
