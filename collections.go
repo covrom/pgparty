@@ -10,6 +10,14 @@ import (
 
 type AnyObjectMap map[string]interface{}
 
+func (AnyObjectMap) PostgresType() string {
+	return "JSONB"
+}
+
+func (AnyObjectMap) PostgresDefaultValue() string {
+	return `'{}'::jsonb`
+}
+
 func (f *AnyObjectMap) Scan(value interface{}) error {
 	if value == nil {
 		*f = make(map[string]interface{})
@@ -72,6 +80,14 @@ func (f AnyObjectMap) ConvertTo(value interface{}) error {
 }
 
 type Uint64Array []uint64
+
+func (Uint64Array) PostgresType() string {
+	return "JSONB"
+}
+
+func (Uint64Array) PostgresDefaultValue() string {
+	return `'[]'::jsonb`
+}
 
 func (f *Uint64Array) Scan(value interface{}) error {
 	if value == nil {
