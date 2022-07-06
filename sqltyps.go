@@ -28,8 +28,7 @@ var sqlTypesMap = map[reflect.Kind]string{
 }
 
 var defaultSQLValues = map[reflect.Type]string{
-	reflect.TypeOf(Decimal{}):     `'0.0'`,
-	reflect.TypeOf(StringArray{}): `'[]'::jsonb`,
+	reflect.TypeOf(Decimal{}): `'0.0'`,
 }
 
 var defaultSQLKindValues = map[reflect.Kind]string{
@@ -79,17 +78,7 @@ func SQLType(ft reflect.Type, ln, prec int) string {
 			return "BOOLEAN"
 		} else if ft == reflect.TypeOf(NullFloat64{}) {
 			return "FLOAT8"
-		} else if ft == reflect.TypeOf(NullInt64{}) {
-			return "BIGINT"
-		} else if ft == reflect.TypeOf(BigSerial{}) {
-			return "BIGSERIAL"
-		} else if ft == reflect.TypeOf(NullString{}) {
-			return fmt.Sprintf("VARCHAR(%d)", ln)
-		} else if ft == reflect.TypeOf(NullJsonB{}) {
-			return jsonType
 		} else if ft == reflect.TypeOf(JsonB{}) {
-			return jsonType
-		} else if ft == reflect.TypeOf(StringArray{}) {
 			return jsonType
 		} else if ft == reflect.TypeOf(NullDecimal{}) {
 			if ln > 50 {
@@ -98,9 +87,6 @@ func SQLType(ft reflect.Type, ln, prec int) string {
 			return fmt.Sprintf("NUMERIC(%d,%d)", ln, prec)
 		}
 	} else if ft.Kind() == reflect.String {
-		if ft == reflect.TypeOf(Text("")) {
-			return "TEXT"
-		}
 		return fmt.Sprintf("VARCHAR(%d)", ln)
 	}
 	return sqlTypesMap[ft.Kind()]

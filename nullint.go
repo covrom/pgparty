@@ -17,6 +17,14 @@ func init() {
 
 type NullInt64 sql.NullInt64
 
+func (NullInt64) PostgresType() string {
+	return "BIGINT"
+}
+
+func (NullInt64) PostgresDefaultValue() string {
+	return `0`
+}
+
 func (n NullInt64) MarshalJSON() ([]byte, error) {
 	if !n.Valid {
 		return json.Marshal(nil)
@@ -48,6 +56,56 @@ func (n NullInt64) Value() (driver.Value, error) {
 }
 
 type Int64 int64
+
+func (Int64) PostgresType() string {
+	return "BIGINT"
+}
+
+func (Int64) PostgresDefaultValue() string {
+	return `0`
+}
+
+func (n Int64) MarshalJSON() ([]byte, error) {
+	return json.Marshal(int64(n))
+}
+
+func (n *Int64) UnmarshalJSON(b []byte) error {
+	if bytes.EqualFold(b, []byte("null")) {
+		*n = 0
+		return nil
+	}
+	tmp := int64(0)
+	err := json.Unmarshal(b, &tmp)
+	if err == nil {
+		*n = Int64(tmp)
+	}
+	return err
+}
+
+func (n *Int64) Scan(value interface{}) error {
+	tmp := &sql.NullInt64{}
+	if err := tmp.Scan(value); err != nil {
+		return err
+	}
+	if tmp.Valid {
+		*n = Int64(tmp.Int64)
+	} else {
+		*n = 0
+	}
+	return nil
+}
+
+func (n Int64) Value() (driver.Value, error) {
+	return (sql.NullInt64{Int64: int64(n), Valid: true}).Value()
+}
+
+func (n Int64) Int() int {
+	return int(n)
+}
+
+func (n *Int64) SetInt(i int) {
+	*n = Int64(i)
+}
 
 // store.Converter interface, n must contain zero value before call
 func (f *Int64) ConvertFrom(v interface{}) error {

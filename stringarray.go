@@ -13,6 +13,14 @@ func init() {
 
 type StringArray []string
 
+func (StringArray) PostgresType() string {
+	return "JSONB"
+}
+
+func (StringArray) PostgresDefaultValue() string {
+	return `'[]'::jsonb`
+}
+
 func (f *StringArray) Scan(value interface{}) error {
 	if value == nil {
 		*f = make([]string, 0)

@@ -17,6 +17,14 @@ func init() {
 
 type BigSerial sql.NullInt64
 
+func (BigSerial) PostgresType() string {
+	return "BIGSERIAL"
+}
+
+func (BigSerial) PostgresDefaultValue() string {
+	return ``
+}
+
 func (n BigSerial) MarshalJSON() ([]byte, error) {
 	if !n.Valid {
 		return json.Marshal(nil)

@@ -15,6 +15,14 @@ func init() {
 
 type NullString sql.NullString
 
+func (NullString) PostgresType() string {
+	return "VARCHAR"
+}
+
+func (NullString) PostgresDefaultValue() string {
+	return `''`
+}
+
 func (n NullString) MarshalJSON() ([]byte, error) {
 	if !n.Valid {
 		return json.Marshal(nil)

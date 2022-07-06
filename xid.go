@@ -40,7 +40,7 @@ func (id XID[T]) String() string {
 }
 
 func (XID[T]) PostgresType() string {
-	return "CHAR(20)"
+	return "VARCHAR(20)"
 }
 
 func (XID[T]) PostgresDefaultValue() string {
