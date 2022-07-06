@@ -16,8 +16,34 @@ func init() {
 	gob.Register(&Decimal{})
 }
 
-// Decimal
+type Decimal152 Decimal
+
+func (Decimal152) PostgresType() string {
+	return "NUMERIC(15,2)"
+}
+
+type Decimal153 Decimal
+
+func (Decimal153) PostgresType() string {
+	return "NUMERIC(15,3)"
+}
+
+type Decimal192 Decimal
+
+func (Decimal192) PostgresType() string {
+	return "NUMERIC(19,2)"
+}
+
+// Decimal length 19 precision 6
 type Decimal []byte
+
+func (Decimal) PostgresType() string {
+	return "NUMERIC(19,6)"
+}
+
+func (Decimal) PostgresDefaultValue() string {
+	return `'0.0'`
+}
 
 func (d Decimal) GetNumber() (*decimal.Big, error) {
 	tmp := &decimal.Big{Context: decimal.Context128}

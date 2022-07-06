@@ -31,7 +31,7 @@ func (NullDecimal192) PostgresType() string {
 	return "NUMERIC(19,2)"
 }
 
-// length 19 precision 6
+// Nullable decimal, length 19 precision 6
 type NullDecimal struct {
 	Decimal Decimal
 	Valid   bool // Valid is true if Decimal is not NULL
