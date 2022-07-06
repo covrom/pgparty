@@ -16,6 +16,14 @@ func init() {
 
 type NullFloat64 sql.NullFloat64
 
+func (NullFloat64) PostgresType() string {
+	return "FLOAT8"
+}
+
+func (NullFloat64) PostgresDefaultValue() string {
+	return `0`
+}
+
 func (n NullFloat64) MarshalJSON() ([]byte, error) {
 	if !n.Valid {
 		return json.Marshal(nil)
@@ -47,6 +55,56 @@ func (n NullFloat64) Value() (driver.Value, error) {
 }
 
 type Float64 float64
+
+func (Float64) PostgresType() string {
+	return "FLOAT8"
+}
+
+func (Float64) PostgresDefaultValue() string {
+	return `0`
+}
+
+func (n Float64) MarshalJSON() ([]byte, error) {
+	return json.Marshal(float64(n))
+}
+
+func (n *Float64) UnmarshalJSON(b []byte) error {
+	if bytes.EqualFold(b, []byte("null")) {
+		*n = 0
+		return nil
+	}
+	tmp := float64(0)
+	err := json.Unmarshal(b, &tmp)
+	if err == nil {
+		*n = Float64(tmp)
+	}
+	return err
+}
+
+func (n *Float64) Scan(value interface{}) error {
+	tmp := &sql.NullFloat64{}
+	if err := tmp.Scan(value); err != nil {
+		return err
+	}
+	if tmp.Valid {
+		*n = Float64(tmp.Float64)
+	} else {
+		*n = 0
+	}
+	return nil
+}
+
+func (n Float64) Value() (driver.Value, error) {
+	return (sql.NullFloat64{Float64: float64(n), Valid: true}).Value()
+}
+
+func (n Float64) Float64() float64 {
+	return float64(n)
+}
+
+func (n *Float64) SetFloat64(f float64) {
+	*n = Float64(f)
+}
 
 // store.Converter interface, n must contain zero value before call
 func (f *Float64) ConvertFrom(v interface{}) error {

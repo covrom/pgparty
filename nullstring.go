@@ -55,6 +55,56 @@ func (n NullString) Value() (driver.Value, error) {
 
 type String string
 
+func (String) PostgresType() string {
+	return "VARCHAR"
+}
+
+func (String) PostgresDefaultValue() string {
+	return `''`
+}
+
+func (n String) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(n))
+}
+
+func (n *String) UnmarshalJSON(b []byte) error {
+	if bytes.EqualFold(b, []byte("null")) {
+		*n = ""
+		return nil
+	}
+	var tmp string
+	err := json.Unmarshal(b, &tmp)
+	if err == nil {
+		*n = String(tmp)
+	}
+	return err
+}
+
+func (n *String) Scan(value interface{}) error {
+	tmp := &sql.NullString{}
+	if err := tmp.Scan(value); err != nil {
+		return err
+	}
+	if tmp.Valid {
+		*n = String(tmp.String)
+	} else {
+		*n = ""
+	}
+	return nil
+}
+
+func (n String) Value() (driver.Value, error) {
+	return (sql.NullString{String: string(n), Valid: true}).Value()
+}
+
+func (n String) String() string {
+	return string(n)
+}
+
+func (n *String) SetString(s string) {
+	*n = String(s)
+}
+
 // store.Converter interface, n must contain zero value before call
 func (s *String) ConvertFrom(v interface{}) error {
 	if v == nil {

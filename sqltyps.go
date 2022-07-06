@@ -76,8 +76,6 @@ func SQLType(ft reflect.Type, ln, prec int) string {
 	} else if ft.Kind() == reflect.Struct {
 		if ft == reflect.TypeOf(NullBool{}) {
 			return "BOOLEAN"
-		} else if ft == reflect.TypeOf(NullFloat64{}) {
-			return "FLOAT8"
 		} else if ft == reflect.TypeOf(JsonB{}) {
 			return jsonType
 		} else if ft == reflect.TypeOf(NullDecimal{}) {
