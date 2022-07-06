@@ -17,6 +17,14 @@ func init() {
 
 type NullBool sql.NullBool
 
+func (NullBool) PostgresType() string {
+	return "BOOLEAN"
+}
+
+func (NullBool) PostgresDefaultValue() string {
+	return `FALSE`
+}
+
 func (n NullBool) MarshalJSON() ([]byte, error) {
 	if !n.Valid {
 		return json.Marshal(nil)
@@ -48,6 +56,56 @@ func (n NullBool) Value() (driver.Value, error) {
 }
 
 type Bool bool
+
+func (Bool) PostgresType() string {
+	return "BOOLEAN"
+}
+
+func (Bool) PostgresDefaultValue() string {
+	return `FALSE`
+}
+
+func (n Bool) MarshalJSON() ([]byte, error) {
+	return json.Marshal(bool(n))
+}
+
+func (n *Bool) UnmarshalJSON(b []byte) error {
+	if bytes.EqualFold(b, []byte("null")) {
+		*n = false
+		return nil
+	}
+	var tmp bool
+	err := json.Unmarshal(b, &tmp)
+	if err == nil {
+		*n = Bool(tmp)
+	}
+	return err
+}
+
+func (n *Bool) Scan(value interface{}) error {
+	tmp := &sql.NullBool{}
+	if err := tmp.Scan(value); err != nil {
+		return err
+	}
+	if tmp.Valid {
+		*n = Bool(tmp.Bool)
+	} else {
+		*n = false
+	}
+	return nil
+}
+
+func (n Bool) Value() (driver.Value, error) {
+	return (sql.NullBool{Bool: bool(n), Valid: true}).Value()
+}
+
+func (n Bool) Bool() bool {
+	return bool(n)
+}
+
+func (n *Bool) SetBool(b bool) {
+	*n = Bool(b)
+}
 
 // store.Converter interface, n must contain zero value before call
 func (b *Bool) ConvertFrom(v interface{}) error {

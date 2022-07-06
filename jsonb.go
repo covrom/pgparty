@@ -26,6 +26,14 @@ func NewJsonB(val interface{}) *JsonB {
 	}
 }
 
+func (JsonB) PostgresType() string {
+	return "JSONB"
+}
+
+func (JsonB) PostgresDefaultValue() string {
+	return `'{}'::jsonb`
+}
+
 func (n *JsonB) Scan(value interface{}) error {
 	if value == nil {
 		n.Val = nil

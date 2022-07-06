@@ -73,17 +73,6 @@ func SQLType(ft reflect.Type, ln, prec int) string {
 			// []byte, не более 16 Мб
 			return "BYTEA"
 		}
-	} else if ft.Kind() == reflect.Struct {
-		if ft == reflect.TypeOf(NullBool{}) {
-			return "BOOLEAN"
-		} else if ft == reflect.TypeOf(JsonB{}) {
-			return jsonType
-		} else if ft == reflect.TypeOf(NullDecimal{}) {
-			if ln > 50 {
-				ln = 15
-			}
-			return fmt.Sprintf("NUMERIC(%d,%d)", ln, prec)
-		}
 	} else if ft.Kind() == reflect.String {
 		return fmt.Sprintf("VARCHAR(%d)", ln)
 	}
