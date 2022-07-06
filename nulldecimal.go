@@ -13,9 +13,36 @@ func init() {
 	gob.Register(&NullDecimal{})
 }
 
+type NullDecimal152 NullDecimal
+
+func (NullDecimal152) PostgresType() string {
+	return "NUMERIC(15,2)"
+}
+
+type NullDecimal153 NullDecimal
+
+func (NullDecimal153) PostgresType() string {
+	return "NUMERIC(15,3)"
+}
+
+type NullDecimal192 NullDecimal
+
+func (NullDecimal192) PostgresType() string {
+	return "NUMERIC(19,2)"
+}
+
+// length 19 precision 6
 type NullDecimal struct {
 	Decimal Decimal
 	Valid   bool // Valid is true if Decimal is not NULL
+}
+
+func (NullDecimal) PostgresType() string {
+	return "NUMERIC(19,6)"
+}
+
+func (NullDecimal) PostgresDefaultValue() string {
+	return `'0.0'`
 }
 
 // Scan implements the Scanner interface.
