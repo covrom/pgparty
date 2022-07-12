@@ -3,6 +3,7 @@ package pgparty
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 )
@@ -43,6 +44,28 @@ func (mo *JsonMasked[T]) IsFilled(structFieldNames ...string) bool {
 		allfnd = allfnd && fnd
 	}
 	return len(structFieldNames) > 0 && allfnd
+}
+
+func (mo *JsonMasked[T]) IsFullFilled() bool {
+	allfilled := true
+	mo.MD.WalkColumnPtrs(func(_ int, fd *FieldDescription) error {
+		for _, fdf := range mo.Filled {
+			if fdf == fd {
+				return nil
+			}
+		}
+		allfilled = false
+		return errors.New("break")
+	})
+	return allfilled && mo.MD.ColumnPtrsCount() > 0
+}
+
+func (mo *JsonMasked[T]) SetFullFilled() {
+	mo.Filled = make([]*FieldDescription, 0, mo.MD.ColumnPtrsCount())
+	mo.MD.WalkColumnPtrs(func(_ int, fd *FieldDescription) error {
+		mo.Filled = append(mo.Filled)
+		return nil
+	})
 }
 
 func (mo *JsonMasked[T]) MarshalJSON() ([]byte, error) {
