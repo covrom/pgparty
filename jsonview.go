@@ -18,7 +18,7 @@ func (mo *JsonView[T]) Valid() bool {
 	return len(mo.Filled) > 0 && mo.MD != nil
 }
 
-func NewJsonMasked[T Storable]() (*JsonView[T], error) {
+func NewJsonView[T Storable]() (*JsonView[T], error) {
 	val := *(new(T))
 	md, err := (MD[T]{Val: val}).MD()
 	if err != nil {
