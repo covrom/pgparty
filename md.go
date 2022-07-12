@@ -18,11 +18,11 @@ var mdRepo = mdMap{
 }
 
 type MD[T Storable] struct {
-	val T
+	Val T
 }
 
 func (m MD[T]) MD() (*ModelDesc, error) {
-	value := reflect.Indirect(reflect.ValueOf(m.val))
+	value := reflect.Indirect(reflect.ValueOf(m.Val))
 	if value.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("only structs are supported: %s is not a struct", value.Type())
 	}
@@ -41,7 +41,7 @@ func (m MD[T]) MD() (*ModelDesc, error) {
 		return ret, nil
 	}
 
-	storeName := m.val.StoreName()
+	storeName := m.Val.StoreName()
 
 	md := &ModelDesc{
 		modelType: modelType,

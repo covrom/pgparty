@@ -31,6 +31,8 @@ type FieldDescription struct {
 	SkipReplace     bool // игнорится только при реплейсе
 	FullTextEnabled bool
 	PK              bool
+	JsonSkip        bool
+	JsonOmitEmpty   bool
 }
 
 func NewFieldDescription(structField reflect.StructField) *FieldDescription {
@@ -77,6 +79,8 @@ func NewFieldDescription(structField reflect.StructField) *FieldDescription {
 			structField.Type == reflect.TypeOf(NullString{}),
 		FullTextEnabled: fullTextEnabled,
 		PK:              structField.Name == IDField,
+		JsonOmitEmpty:   strings.Contains(structField.Tag.Get("json"), ",omitempty"),
+		JsonSkip:        structField.Tag.Get("json") == "-",
 	}
 
 	switch strings.ToLower(structField.Tag.Get("nullable")) {
