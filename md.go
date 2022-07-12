@@ -90,6 +90,7 @@ type ModelDesc struct {
 
 	columns           []FieldDescription
 	columnPtrs        []*FieldDescription
+	columnByName      map[string]*FieldDescription
 	columnByFieldName map[string]*FieldDescription
 	columnByJsonName  map[string]*FieldDescription
 }
@@ -155,6 +156,14 @@ func (md ModelDesc) ColumnByJsonName(jsonName string) (*FieldDescription, error)
 	return field, nil
 }
 
+func (md ModelDesc) ColumnByStoreName(storeName string) (*FieldDescription, error) {
+	field, ok := md.columnByName[storeName]
+	if !ok {
+		return nil, fmt.Errorf("ColumnByStoreName no such field: %s.%s", md.modelType.Name(), storeName)
+	}
+	return field, nil
+}
+
 func (md *ModelDesc) init() error {
 	columns := make([]FieldDescription, 0, md.modelType.NumField())
 	columnByName := make(map[string]*FieldDescription)
@@ -202,6 +211,7 @@ func (md *ModelDesc) init() error {
 	md.columns = columns
 	md.columnByFieldName = columnByFieldName
 	md.columnByJsonName = columnByJsonName
+	md.columnByName = columnByName
 
 	return nil
 }

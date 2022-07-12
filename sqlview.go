@@ -1,30 +1,31 @@
 package pgparty
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
-type JsonView[T Storable] struct {
+type SQLView[T Storable] struct {
 	V      T
 	MD     *ModelDesc
 	Filled []*FieldDescription
 }
 
-func (mo *JsonView[T]) Valid() bool {
+func (mo *SQLView[T]) Valid() bool {
 	return len(mo.Filled) > 0 && mo.MD != nil
 }
 
-func NewJsonView[T Storable]() (*JsonView[T], error) {
+func NewSQLView[T Storable]() (*SQLView[T], error) {
 	val := *(new(T))
 	md, err := (MD[T]{Val: val}).MD()
 	if err != nil {
 		return nil, err
 	}
-	ret := &JsonView[T]{
+	ret := &SQLView[T]{
 		V:      val,
 		MD:     md,
 		Filled: nil,
@@ -32,7 +33,7 @@ func NewJsonView[T Storable]() (*JsonView[T], error) {
 	return ret, nil
 }
 
-func (mo *JsonView[T]) IsFilled(structFieldNames ...string) bool {
+func (mo *SQLView[T]) IsFilled(structFieldNames ...string) bool {
 	allfnd := true
 	for _, fn := range structFieldNames {
 		fnd := false
@@ -46,7 +47,7 @@ func (mo *JsonView[T]) IsFilled(structFieldNames ...string) bool {
 	return len(structFieldNames) > 0 && allfnd
 }
 
-func (mo *JsonView[T]) SetFilled(structFieldNames ...string) error {
+func (mo *SQLView[T]) SetFilled(structFieldNames ...string) error {
 	for _, fn := range structFieldNames {
 		if mo.IsFilled(fn) {
 			continue
@@ -60,7 +61,7 @@ func (mo *JsonView[T]) SetFilled(structFieldNames ...string) error {
 	return nil
 }
 
-func (mo *JsonView[T]) SetUnfilled(structFieldNames ...string) error {
+func (mo *SQLView[T]) SetUnfilled(structFieldNames ...string) error {
 	i := 0
 	for _, fd := range mo.Filled {
 		fnd := false
@@ -83,7 +84,7 @@ func (mo *JsonView[T]) SetUnfilled(structFieldNames ...string) error {
 	return nil
 }
 
-func (mo *JsonView[T]) IsFullFilled() bool {
+func (mo *SQLView[T]) IsFullFilled() bool {
 	allfilled := true
 	mo.MD.WalkColumnPtrs(func(_ int, fd *FieldDescription) error {
 		for _, fdf := range mo.Filled {
@@ -97,7 +98,7 @@ func (mo *JsonView[T]) IsFullFilled() bool {
 	return allfilled && mo.MD.ColumnPtrsCount() > 0
 }
 
-func (mo *JsonView[T]) SetFullFilled() {
+func (mo *SQLView[T]) SetFullFilled() {
 	mo.Filled = make([]*FieldDescription, 0, mo.MD.ColumnPtrsCount())
 	mo.MD.WalkColumnPtrs(func(_ int, fd *FieldDescription) error {
 		mo.Filled = append(mo.Filled)
@@ -105,44 +106,32 @@ func (mo *JsonView[T]) SetFullFilled() {
 	})
 }
 
-func (mo *JsonView[T]) MarshalJSON() ([]byte, error) {
-	b := &bytes.Buffer{}
-	b.Grow(len(mo.Filled) * 32)
-	enc := json.NewEncoder(b)
-	b.WriteByte('{')
-	comma := false
+func (mo *SQLView[T]) Columns() []string {
+	ret := make([]string, 0, len(mo.Filled))
 	for _, fd := range mo.Filled {
-		rv := reflect.ValueOf(mo.V).FieldByName(fd.StructField.Name)
-		v := rv.Interface()
-		if v == nil || fd.JsonName == "" {
+		if fd.Skip {
 			continue
 		}
-
-		if fd.JsonOmitEmpty && rv.IsZero() {
-			continue
-		}
-
-		if comma {
-			b.WriteByte(',')
-		}
-		b.WriteByte('"')
-		b.WriteString(fd.JsonName)
-		b.WriteByte('"')
-		b.WriteByte(':')
-
-		if err := enc.Encode(v); err != nil {
-			return nil, fmt.Errorf("ModelObject.MarshalJSON error: %w", err)
-		}
-
-		comma = true
+		ret = append(ret, fd.Name)
 	}
-	b.WriteByte('}')
-	res := b.Bytes()
-
-	return res, nil
+	return ret
 }
 
-func (mo *JsonView[T]) UnmarshalJSON(b []byte) error {
+func (mo *SQLView[T]) Values() []interface{} {
+	ret := make([]interface{}, 0, len(mo.Filled))
+	for _, fd := range mo.Filled {
+		if fd.Skip {
+			continue
+		}
+		rv := reflect.ValueOf(mo.V).FieldByName(fd.StructField.Name)
+		v := rv.Interface()
+		ret = append(ret, v)
+	}
+	return ret
+}
+
+// prefix is table alias with point at end, or empty string
+func (mo *SQLView[T]) Scan(rows sqlx.ColScanner, prefix string) error {
 	mo.V = *(new(T))
 	md, err := (MD[T]{Val: mo.V}).MD()
 	if err != nil {
@@ -150,38 +139,38 @@ func (mo *JsonView[T]) UnmarshalJSON(b []byte) error {
 	}
 	mo.MD = md
 	mo.Filled = nil
-	if bytes.EqualFold(b, []byte("null")) {
-		mo.MD = nil
-		return nil
-	}
 	if mo.MD == nil {
 		return fmt.Errorf("model description not found for %T", mo.V)
 	}
-	data := make(map[string]interface{})
-	err = json.Unmarshal(b, &data)
+	cols, err := rows.Columns()
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(b, &mo.V)
-	if err != nil {
-		return err
-	}
+	vals := make([]interface{}, len(cols))
+
 	morv := reflect.Indirect(reflect.ValueOf(mo.V))
-	mo.Filled = make([]*FieldDescription, 0, len(data))
-	for k := range data {
-		fd, err := mo.MD.ColumnByJsonName(k)
-		if err != nil {
+	mo.Filled = make([]*FieldDescription, 0, len(cols))
+
+	for i, k := range cols {
+		cn := k
+		if prefix != "" {
+			if !strings.HasPrefix(strings.ToLower(cn), strings.ToLower(prefix)) {
+				vals[i] = new(interface{})
+				continue
+			}
+			cn = cn[len(prefix):]
+		}
+		fd, ok := mo.MD.columnByName[cn]
+		if !ok || fd.Skip {
+			vals[i] = new(interface{})
 			continue
 		}
 
-		if fd.JsonSkip {
-			newv := reflect.Zero(fd.StructField.Type)
-			morv.FieldByName(fd.StructField.Name).Set(newv)
-			continue
-		}
+		f := morv.FieldByName(fd.StructField.Name)
+		vals[i] = f.Addr().Interface()
 
 		mo.Filled = append(mo.Filled, fd)
 	}
 
-	return nil
+	return rows.Scan(vals...)
 }

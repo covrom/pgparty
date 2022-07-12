@@ -42,9 +42,10 @@ func NewFieldDescription(structField reflect.StructField) *FieldDescription {
 	dbtag := structField.Tag.Get(TagDBName)
 	if len(dbtag) > 0 {
 		if dbtag == "-" {
-			return nil
+			name = ""
+		} else {
+			name = dbtag
 		}
-		name = dbtag
 	}
 
 	elemType := structField.Type
