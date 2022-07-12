@@ -8,23 +8,23 @@ import (
 	"reflect"
 )
 
-type JsonMasked[T Storable] struct {
+type JsonView[T Storable] struct {
 	V      T
 	MD     *ModelDesc
 	Filled []*FieldDescription
 }
 
-func (mo *JsonMasked[T]) Valid() bool {
+func (mo *JsonView[T]) Valid() bool {
 	return len(mo.Filled) > 0 && mo.MD != nil
 }
 
-func NewJsonMasked[T Storable]() (*JsonMasked[T], error) {
+func NewJsonMasked[T Storable]() (*JsonView[T], error) {
 	val := *(new(T))
 	md, err := (MD[T]{Val: val}).MD()
 	if err != nil {
 		return nil, err
 	}
-	ret := &JsonMasked[T]{
+	ret := &JsonView[T]{
 		V:      val,
 		MD:     md,
 		Filled: nil,
@@ -32,7 +32,7 @@ func NewJsonMasked[T Storable]() (*JsonMasked[T], error) {
 	return ret, nil
 }
 
-func (mo *JsonMasked[T]) IsFilled(structFieldNames ...string) bool {
+func (mo *JsonView[T]) IsFilled(structFieldNames ...string) bool {
 	allfnd := true
 	for _, fn := range structFieldNames {
 		fnd := false
@@ -46,7 +46,7 @@ func (mo *JsonMasked[T]) IsFilled(structFieldNames ...string) bool {
 	return len(structFieldNames) > 0 && allfnd
 }
 
-func (mo *JsonMasked[T]) IsFullFilled() bool {
+func (mo *JsonView[T]) IsFullFilled() bool {
 	allfilled := true
 	mo.MD.WalkColumnPtrs(func(_ int, fd *FieldDescription) error {
 		for _, fdf := range mo.Filled {
@@ -60,7 +60,7 @@ func (mo *JsonMasked[T]) IsFullFilled() bool {
 	return allfilled && mo.MD.ColumnPtrsCount() > 0
 }
 
-func (mo *JsonMasked[T]) SetFullFilled() {
+func (mo *JsonView[T]) SetFullFilled() {
 	mo.Filled = make([]*FieldDescription, 0, mo.MD.ColumnPtrsCount())
 	mo.MD.WalkColumnPtrs(func(_ int, fd *FieldDescription) error {
 		mo.Filled = append(mo.Filled)
@@ -68,7 +68,7 @@ func (mo *JsonMasked[T]) SetFullFilled() {
 	})
 }
 
-func (mo *JsonMasked[T]) MarshalJSON() ([]byte, error) {
+func (mo *JsonView[T]) MarshalJSON() ([]byte, error) {
 	b := &bytes.Buffer{}
 	b.Grow(len(mo.Filled) * 32)
 	enc := json.NewEncoder(b)
@@ -105,7 +105,7 @@ func (mo *JsonMasked[T]) MarshalJSON() ([]byte, error) {
 	return res, nil
 }
 
-func (mo *JsonMasked[T]) UnmarshalJSON(b []byte) error {
+func (mo *JsonView[T]) UnmarshalJSON(b []byte) error {
 	mo.V = *(new(T))
 	md, err := (MD[T]{Val: mo.V}).MD()
 	if err != nil {
