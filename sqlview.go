@@ -161,7 +161,7 @@ func (mo *SQLView[T]) Scan(rows sqlx.ColScanner, prefix string) error {
 			cn = cn[len(prefix):]
 		}
 		fd, ok := mo.MD.columnByName[cn]
-		if !ok || fd.Skip {
+		if !ok || fd.Skip || fd.StructField.Tag.Get(TagDBName) == "-" {
 			vals[i] = new(interface{})
 			continue
 		}
