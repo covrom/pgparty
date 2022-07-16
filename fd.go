@@ -62,22 +62,13 @@ func NewFieldDescription(structField reflect.StructField) *FieldDescription {
 	}
 
 	column := FieldDescription{
-		StructField: structField,
-		ElemType:    elemType,
-		Name:        name,
-		JsonName:    utils.JsonFieldName(structField),
-		Skip:        structField.Tag.Get(TagStore) == "-",
-		SkipReplace: structField.Type == reflect.TypeOf(BigSerial{}),
-		Nullable: structField.Type.Kind() == reflect.Ptr ||
-			structField.Type == reflect.TypeOf(NullTime{}) ||
-			structField.Type == reflect.TypeOf(NullDecimal{}) ||
-			structField.Type == reflect.TypeOf(NullBool{}) ||
-			structField.Type == reflect.TypeOf(NullFloat64{}) ||
-			structField.Type == reflect.TypeOf(NullInt64{}) ||
-			structField.Type == reflect.TypeOf(BigSerial{}) ||
-			structField.Type == reflect.TypeOf(NullText{}) ||
-			structField.Type == reflect.TypeOf(NullJsonB{}) ||
-			structField.Type == reflect.TypeOf(NullString{}),
+		StructField:     structField,
+		ElemType:        elemType,
+		Name:            name,
+		JsonName:        utils.JsonFieldName(structField),
+		Skip:            structField.Tag.Get(TagStore) == "-",
+		SkipReplace:     structField.Type == reflect.TypeOf(BigSerial{}),
+		Nullable:        SQLAllowNull(structField.Type),
 		FullTextEnabled: fullTextEnabled,
 		PK:              structField.Name == IDField,
 		JsonOmitEmpty:   strings.Contains(structField.Tag.Get("json"), ",omitempty"),

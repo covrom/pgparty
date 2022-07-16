@@ -35,6 +35,10 @@ func (u Time) PostgresDefaultValue() string {
 	return `'epoch'`
 }
 
+func (u Time) PostgresAllowNull() bool {
+	return false
+}
+
 func (t Time) MarshalJSON() ([]byte, error) {
 	tt := time.Time(t)
 	if y := tt.Year(); y < 0 || y >= 10000 {

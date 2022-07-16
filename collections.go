@@ -18,6 +18,10 @@ func (AnyObjectMap) PostgresDefaultValue() string {
 	return `'{}'::jsonb`
 }
 
+func (u AnyObjectMap) PostgresAllowNull() bool {
+	return false
+}
+
 func (f *AnyObjectMap) Scan(value interface{}) error {
 	if value == nil {
 		*f = make(map[string]interface{})
@@ -87,6 +91,10 @@ func (Uint64Array) PostgresType() string {
 
 func (Uint64Array) PostgresDefaultValue() string {
 	return `'[]'::jsonb`
+}
+
+func (u Uint64Array) PostgresAllowNull() bool {
+	return false
 }
 
 func (f *Uint64Array) Scan(value interface{}) error {

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// создавет строку вида json_build_object('jsonFieldName', prefixStructFieldName ...)
+// создает строку вида json_build_object('jsonFieldName', prefixStructFieldName ...)
 // если берутся поля от модели, то нужно использовать префикс ":".
 // если от именованной таблицы tabl, то нужно использвать префикс "tabl.:"
 // если с префиксом модели, то нужно использвать префикс ":ModelName."

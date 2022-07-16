@@ -22,6 +22,10 @@ func (Text) PostgresDefaultValue() string {
 	return `''`
 }
 
+func (u Text) PostgresAllowNull() bool {
+	return false
+}
+
 func (u Text) Value() (driver.Value, error) {
 	return []byte(u), nil
 }

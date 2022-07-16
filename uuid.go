@@ -28,6 +28,10 @@ func (UUIDv4) PostgresDefaultValue() string {
 	return fmt.Sprintf(`'%s'`, empty)
 }
 
+func (UUIDv4) PostgresAllowNull() bool {
+	return false
+}
+
 func (u UUIDv4) MarshalJSON() ([]byte, error) {
 	return json.Marshal(u.UUID)
 }

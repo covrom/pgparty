@@ -48,6 +48,10 @@ func (XID[T]) PostgresDefaultValue() string {
 	return fmt.Sprintf(`'%s'`, empty)
 }
 
+func (XID[T]) PostgresAllowNull() bool {
+	return false
+}
+
 func (u XID[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(xid.ID(u))
 }

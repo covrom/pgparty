@@ -47,6 +47,10 @@ func (UUID[T]) PostgresDefaultValue() string {
 	return fmt.Sprintf(`'%s'`, empty)
 }
 
+func (UUID[T]) PostgresAllowNull() bool {
+	return false
+}
+
 func (u UUID[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(UUIDv4(u))
 }

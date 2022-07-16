@@ -21,6 +21,10 @@ func (UUIDv4Array) PostgresDefaultValue() string {
 	return `'[]'::jsonb`
 }
 
+func (UUIDv4Array) PostgresAllowNull() bool {
+	return false
+}
+
 func (a *UUIDv4Array) Raw() []UUIDv4 {
 	return *a
 }

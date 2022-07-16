@@ -45,6 +45,10 @@ func (NullDecimal) PostgresDefaultValue() string {
 	return `'0.0'`
 }
 
+func (u NullDecimal) PostgresAllowNull() bool {
+	return true
+}
+
 // Scan implements the Scanner interface.
 func (n *NullDecimal) Scan(value interface{}) error {
 	if value == nil {

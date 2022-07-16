@@ -26,6 +26,10 @@ func (u NullTime) PostgresDefaultValue() string {
 	return `'epoch'`
 }
 
+func (u NullTime) PostgresAllowNull() bool {
+	return true
+}
+
 func (nt *NullTime) Scan(value interface{}) (err error) {
 	if value == nil {
 		nt.Time, nt.Valid = Time{}, false

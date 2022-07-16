@@ -25,6 +25,10 @@ func (NullInt64) PostgresDefaultValue() string {
 	return `0`
 }
 
+func (u NullInt64) PostgresAllowNull() bool {
+	return true
+}
+
 func (n NullInt64) MarshalJSON() ([]byte, error) {
 	if !n.Valid {
 		return json.Marshal(nil)
@@ -63,6 +67,10 @@ func (Int64) PostgresType() string {
 
 func (Int64) PostgresDefaultValue() string {
 	return `0`
+}
+
+func (Int64) PostgresAllowNull() bool {
+	return false
 }
 
 func (n Int64) MarshalJSON() ([]byte, error) {

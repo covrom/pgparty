@@ -35,6 +35,10 @@ func (NullJsonB) PostgresDefaultValue() string {
 	return `'{}'::jsonb`
 }
 
+func (u NullJsonB) PostgresAllowNull() bool {
+	return true
+}
+
 func (n *NullJsonB) Scan(value interface{}) error {
 	if value == nil {
 		n.Val, n.Valid = nil, false

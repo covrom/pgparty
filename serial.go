@@ -25,6 +25,10 @@ func (BigSerial) PostgresDefaultValue() string {
 	return ``
 }
 
+func (u BigSerial) PostgresAllowNull() bool {
+	return true
+}
+
 func (n BigSerial) MarshalJSON() ([]byte, error) {
 	if !n.Valid {
 		return json.Marshal(nil)

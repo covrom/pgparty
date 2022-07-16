@@ -45,6 +45,10 @@ func (Decimal) PostgresDefaultValue() string {
 	return `'0.0'`
 }
 
+func (u Decimal) PostgresAllowNull() bool {
+	return false
+}
+
 func (d Decimal) GetNumber() (*decimal.Big, error) {
 	tmp := &decimal.Big{Context: decimal.Context128}
 

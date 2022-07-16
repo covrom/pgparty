@@ -22,6 +22,10 @@ func (NullText) PostgresDefaultValue() string {
 	return `''`
 }
 
+func (u NullText) PostgresAllowNull() bool {
+	return true
+}
+
 func (n NullText) MarshalJSON() ([]byte, error) {
 	if !n.Valid {
 		return json.Marshal(nil)

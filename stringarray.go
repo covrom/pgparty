@@ -21,6 +21,10 @@ func (StringArray) PostgresDefaultValue() string {
 	return `'[]'::jsonb`
 }
 
+func (u StringArray) PostgresAllowNull() bool {
+	return false
+}
+
 func (f *StringArray) Scan(value interface{}) error {
 	if value == nil {
 		*f = make([]string, 0)

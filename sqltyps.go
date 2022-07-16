@@ -1,7 +1,6 @@
 package pgparty
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -21,6 +20,7 @@ var sqlTypesMap = map[reflect.Kind]string{
 	reflect.Uint64:  "BIGINT",
 	reflect.Float32: "FLOAT4",
 	reflect.Float64: "FLOAT8",
+	reflect.String:  "VARCHAR",
 	// json
 	reflect.Struct: jsonType,
 	reflect.Slice:  jsonType,
@@ -62,8 +62,6 @@ func SQLType(ft reflect.Type, ln, prec int) string {
 			// []byte, не более 16 Мб
 			return "BYTEA"
 		}
-	} else if ft.Kind() == reflect.String {
-		return fmt.Sprintf("VARCHAR(%d)", ln)
 	}
 	return sqlTypesMap[ft.Kind()]
 }
@@ -85,4 +83,19 @@ func SQLDefaultValue(ft reflect.Type) string {
 	ret = defaultSQLKindValues[ft.Kind()]
 
 	return ret
+}
+
+type PostgresNullable interface {
+	PostgresAllowNull() bool
+}
+
+func SQLAllowNull(ft reflect.Type) bool {
+	if ft.Kind() == reflect.Ptr {
+		return true
+	}
+	if ft.Implements(reflect.TypeOf((*PostgresNullable)(nil)).Elem()) {
+		v := reflect.New(ft).Elem().Interface().(PostgresNullable)
+		return v.PostgresAllowNull()
+	}
+	return false
 }
