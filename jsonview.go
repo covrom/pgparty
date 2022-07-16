@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 type JsonView[T Storable] struct {
@@ -157,31 +159,33 @@ func (mo *JsonView[T]) UnmarshalJSON(b []byte) error {
 	if mo.MD == nil {
 		return fmt.Errorf("model description not found for %T", mo.V)
 	}
-	data := make(map[string]interface{})
-	err = json.Unmarshal(b, &data)
-	if err != nil {
-		return err
+
+	iter := jsoniter.ParseBytes(jsoniter.ConfigCompatibleWithStandardLibrary, b)
+	if iter.WhatIsNext() != jsoniter.ObjectValue {
+		return fmt.Errorf("json must contain an object")
 	}
-	err = json.Unmarshal(b, &mo.V)
-	if err != nil {
-		return err
-	}
-	morv := reflect.Indirect(reflect.ValueOf(mo.V))
-	mo.Filled = make([]*FieldDescription, 0, len(data))
-	for k := range data {
+
+	morv := reflect.ValueOf(&mo.V)
+	mo.Filled = make([]*FieldDescription, 0, len(mo.MD.columns))
+
+	iter.ReadObjectCB(func(it *jsoniter.Iterator, k string) bool {
 		fd, err := mo.MD.ColumnByJsonName(k)
 		if err != nil {
-			continue
+			return true
 		}
 
 		if fd.JsonSkip {
 			newv := reflect.Zero(fd.StructField.Type)
-			morv.FieldByName(fd.StructField.Name).Set(newv)
-			continue
+			morv.Elem().FieldByName(fd.StructField.Name).Set(newv)
+			return true
 		}
 
 		mo.Filled = append(mo.Filled, fd)
-	}
+		f := morv.Elem().FieldByName(fd.StructField.Name).Addr().Interface()
+		it.ReadVal(f)
+
+		return true
+	})
 
 	return nil
 }

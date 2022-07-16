@@ -148,7 +148,7 @@ func (mo *SQLView[T]) Scan(rows sqlx.ColScanner, prefix string) error {
 	}
 	vals := make([]interface{}, len(cols))
 
-	morv := reflect.Indirect(reflect.ValueOf(mo.V))
+	morv := reflect.ValueOf(&mo.V)
 	mo.Filled = make([]*FieldDescription, 0, len(cols))
 
 	for i, k := range cols {
@@ -166,8 +166,7 @@ func (mo *SQLView[T]) Scan(rows sqlx.ColScanner, prefix string) error {
 			continue
 		}
 
-		f := morv.FieldByName(fd.StructField.Name)
-		vals[i] = f.Addr().Interface()
+		vals[i] = morv.Elem().FieldByName(fd.StructField.Name).Addr().Interface()
 
 		mo.Filled = append(mo.Filled, fd)
 	}
