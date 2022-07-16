@@ -88,16 +88,16 @@ func NewFieldDescription(structField reflect.StructField) *FieldDescription {
 		column.PK = v != "-"
 	}
 
-	// тэг len для строк и decimal
-	column.Ln = 150
+	// len for decimal
+	column.Ln = 19
 	if lns, ok := structField.Tag.Lookup(TagLen); ok && len(lns) > 0 {
 		if ln, err := strconv.Atoi(lns); err == nil {
 			column.Ln = ln
 		}
 	}
 
-	// тэг prec для decimal
-	column.Prec = 2
+	// prec for decimal
+	column.Prec = 6
 	if precs, ok := structField.Tag.Lookup(TagPrec); ok && len(precs) > 0 {
 		if prec, err := strconv.Atoi(precs); err == nil {
 			column.Prec = prec

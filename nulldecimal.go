@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 
 	"github.com/ericlagergren/decimal"
 )
@@ -37,8 +38,8 @@ type NullDecimal struct {
 	Valid   bool // Valid is true if Decimal is not NULL
 }
 
-func (NullDecimal) PostgresType() string {
-	return "NUMERIC(19,6)"
+func (NullDecimal) PostgresTypeWithLenPrec(ln, prec int) string {
+	return fmt.Sprintf("NUMERIC(%d,%d)", ln, prec)
 }
 
 func (NullDecimal) PostgresDefaultValue() string {

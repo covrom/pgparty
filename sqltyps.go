@@ -48,6 +48,14 @@ type PostgresTyper interface {
 	PostgresType() string
 }
 
+type PostgresTyperLn interface {
+	PostgresTypeWithLen(ln int) string
+}
+
+type PostgresTyperLnPrec interface {
+	PostgresTypeWithLenPrec(ln, prec int) string
+}
+
 func SQLType(ft reflect.Type, ln, prec int) string {
 	deepft := ft
 	for deepft.Kind() == reflect.Ptr {
@@ -56,6 +64,14 @@ func SQLType(ft reflect.Type, ln, prec int) string {
 	if deepft.Implements(reflect.TypeOf((*PostgresTyper)(nil)).Elem()) {
 		v := reflect.New(deepft).Elem().Interface().(PostgresTyper)
 		return v.PostgresType()
+	}
+	if deepft.Implements(reflect.TypeOf((*PostgresTyperLn)(nil)).Elem()) {
+		v := reflect.New(deepft).Elem().Interface().(PostgresTyperLn)
+		return v.PostgresTypeWithLen(ln)
+	}
+	if deepft.Implements(reflect.TypeOf((*PostgresTyperLnPrec)(nil)).Elem()) {
+		v := reflect.New(deepft).Elem().Interface().(PostgresTyperLnPrec)
+		return v.PostgresTypeWithLenPrec(ln, prec)
 	}
 	if ft.Kind() == reflect.Slice {
 		if ft.Elem().Kind() == reflect.Uint8 {

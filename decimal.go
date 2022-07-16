@@ -34,11 +34,10 @@ func (Decimal192) PostgresType() string {
 	return "NUMERIC(19,2)"
 }
 
-// Decimal length 19 precision 6
 type Decimal []byte
 
-func (Decimal) PostgresType() string {
-	return "NUMERIC(19,6)"
+func (Decimal) PostgresTypeWithLenPrec(ln, prec int) string {
+	return fmt.Sprintf("NUMERIC(%d,%d)", ln, prec)
 }
 
 func (Decimal) PostgresDefaultValue() string {
