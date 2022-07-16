@@ -2,6 +2,7 @@ package pgparty
 
 import (
 	"bytes"
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -133,7 +134,7 @@ func (mo *JsonView[T]) MarshalJSON() ([]byte, error) {
 		b.WriteByte(':')
 
 		if err := enc.Encode(v); err != nil {
-			return nil, fmt.Errorf("ModelObject.MarshalJSON error: %w", err)
+			return nil, fmt.Errorf("JsonView.MarshalJSON error: %w", err)
 		}
 
 		comma = true
@@ -188,4 +189,96 @@ func (mo *JsonView[T]) UnmarshalJSON(b []byte) error {
 	})
 
 	return nil
+}
+
+// json and jsonb value
+func (mo *JsonView[T]) Value() (driver.Value, error) {
+	b := &bytes.Buffer{}
+	b.Grow(len(mo.Filled) * 32)
+	enc := json.NewEncoder(b)
+	b.WriteByte('{')
+	comma := false
+	for _, fd := range mo.Filled {
+		rv := reflect.ValueOf(mo.V).FieldByName(fd.StructField.Name)
+		v := rv.Interface()
+		if fd.Skip || fd.StructField.Tag.Get(TagDBName) == "-" {
+			continue
+		}
+
+		if comma {
+			b.WriteByte(',')
+		}
+		b.WriteByte('"')
+		b.WriteString(fd.Name)
+		b.WriteByte('"')
+		b.WriteByte(':')
+
+		if err := enc.Encode(v); err != nil {
+			return nil, fmt.Errorf("JsonView.Value error: %w", err)
+		}
+
+		comma = true
+	}
+	b.WriteByte('}')
+	res := b.Bytes()
+
+	return res, nil
+}
+
+// sql database method for json_agg(expression)
+func (mo *JsonView[T]) Scan(value interface{}) error {
+	mo.V = *(new(T))
+	md, err := (MD[T]{Val: mo.V}).MD()
+	if err != nil {
+		return err
+	}
+	mo.MD = md
+	mo.Filled = nil
+	if mo.MD == nil {
+		return fmt.Errorf("model description not found for %T", mo.V)
+	}
+
+	if value == nil {
+		return nil
+	}
+	switch b := value.(type) {
+	case []byte:
+		if bytes.EqualFold(b, []byte("null")) {
+			mo.MD = nil
+			return nil
+		}
+		if mo.MD == nil {
+			return fmt.Errorf("model description not found for %T", mo.V)
+		}
+
+		iter := jsoniter.ParseBytes(jsoniter.ConfigCompatibleWithStandardLibrary, b)
+		if iter.WhatIsNext() != jsoniter.ObjectValue {
+			return fmt.Errorf("json must contain an object")
+		}
+
+		morv := reflect.ValueOf(&mo.V)
+		mo.Filled = make([]*FieldDescription, 0, len(mo.MD.columns))
+
+		iter.ReadObjectCB(func(it *jsoniter.Iterator, k string) bool {
+			fd, ok := mo.MD.columnByName[k]
+			if !ok {
+				return true
+			}
+
+			if fd.Skip || fd.StructField.Tag.Get(TagDBName) == "-" {
+				newv := reflect.Zero(fd.StructField.Type)
+				morv.Elem().FieldByName(fd.StructField.Name).Set(newv)
+				return true
+			}
+
+			mo.Filled = append(mo.Filled, fd)
+			f := morv.Elem().FieldByName(fd.StructField.Name).Addr().Interface()
+			it.ReadVal(f)
+
+			return true
+		})
+
+		return nil
+	}
+	return fmt.Errorf("unsupported database data type %T, needs []byte", value)
 }
