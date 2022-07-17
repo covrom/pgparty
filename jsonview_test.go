@@ -139,4 +139,31 @@ func TestJsonViewBasicUsage(t *testing.T) {
 	if !bytes.Equal(jejson, jvjson) {
 		t.Errorf("json not equal:\n%s\n%s", string(jejson), string(jvjson))
 	}
+
+	jv = BasicModelJsonViewDB{}
+
+	if err := pgparty.WithTxInShard(ctx, shard.ID, func(ctx context.Context) error {
+		return pgparty.Get[BasicModelJsonViewDB](ctx, `
+		select ?::jsonb as jsv
+		`, &jv, je.DBData)
+	}); err != nil {
+		t.Errorf("pgparty.Get error: %s", err)
+		return
+	}
+
+	jvjson, err = json.Marshal(jv.DBData)
+	if err != nil {
+		t.Errorf("json.Marshal error: %s", err)
+		return
+	}
+
+	jejson, err = json.Marshal(je.DBData)
+	if err != nil {
+		t.Errorf("json.Marshal error: %s", err)
+		return
+	}
+
+	if !bytes.Equal(jejson, jvjson) {
+		t.Errorf("json not equal:\n%s\n%s", string(jejson), string(jvjson))
+	}
 }
