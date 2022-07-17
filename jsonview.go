@@ -253,7 +253,7 @@ func (mo *JsonView[T]) Scan(value interface{}) error {
 
 		iter := jsoniter.ParseBytes(jsoniter.ConfigCompatibleWithStandardLibrary, b)
 		if iter.WhatIsNext() != jsoniter.ObjectValue {
-			return fmt.Errorf("json must contain an object")
+			return fmt.Errorf("json must contain an object: %s", string(b))
 		}
 
 		morv := reflect.ValueOf(&mo.V)

@@ -1,11 +1,14 @@
 package pgparty_test
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"reflect"
 	"testing"
 
 	"github.com/covrom/pgparty"
+	log "github.com/sirupsen/logrus"
 )
 
 type Test struct {
@@ -55,5 +58,85 @@ func TestJsonViewUnmarshalJSON(t *testing.T) {
 	if !reflect.DeepEqual(jv.V, el) {
 		t.Logf("%+v", jv.V)
 		t.Error()
+	}
+}
+
+type BasicModelJsonViewDB struct {
+	DBData *pgparty.JsonView[BasicModel] `db:"jsv"`
+}
+
+func TestJsonViewBasicUsage(t *testing.T) {
+	if db == nil {
+		log.Fatal("run TestMain before")
+	}
+
+	shs, ctx := pgparty.NewShards(pgparty.WithLoggingQuery(context.Background()))
+
+	shard := shs.SetShard("shard1", db, "shard1")
+
+	if err := pgparty.Register(shard, pgparty.MD[BasicModel]{}); err != nil {
+		t.Errorf("pgparty.Register error: %s", err)
+		return
+	}
+
+	if err := shard.Migrate(ctx, nil); err != nil {
+		t.Errorf("shard.Migrate error: %s", err)
+		return
+	}
+
+	el := BasicModel{
+		ID: pgparty.NewUUID[BasicModel](),
+		Data: *pgparty.NewNullJsonB(map[string]any{
+			"field1": "string data",
+			"field2": 1344,
+			"field3": pgparty.NowUTC(),
+		}),
+		AppXID:   pgparty.NewXID[pgparty.AppXID](),
+		TraceXID: pgparty.NewXID[pgparty.TraceXID](),
+	}
+
+	if err := pgparty.WithTxInShard(ctx, shard.ID, func(ctx context.Context) error {
+		return pgparty.Replace[BasicModel](ctx, el)
+	}); err != nil {
+		t.Errorf("pgparty.Replace error: %s", err)
+		return
+	}
+
+	jv := BasicModelJsonViewDB{}
+
+	if err := pgparty.WithTxInShard(ctx, shard.ID, func(ctx context.Context) error {
+		return pgparty.Get[BasicModelJsonViewDB](ctx, `
+		select jsonb_build_object(':Data',:Data, ':AppXID',:AppXID) as jsv from &BasicModel where :ID = ?
+		`, &jv, el.ID)
+	}); err != nil {
+		t.Errorf("pgparty.Get error: %s", err)
+		return
+	}
+
+	jvjson, err := json.Marshal(jv.DBData)
+	if err != nil {
+		t.Errorf("json.Marshal error: %s", err)
+		return
+	}
+
+	md, _ := (pgparty.MD[BasicModel]{}).MD()
+	fds := md.ColumnsByFieldNames("Data", "AppXID")
+	je := BasicModelJsonViewDB{
+		DBData: &pgparty.JsonView[BasicModel]{
+			V: BasicModel{
+				Data:   el.Data,
+				AppXID: el.AppXID,
+			},
+			MD:     md,
+			Filled: fds,
+		},
+	}
+	jejson, err := json.Marshal(je.DBData)
+	if err != nil {
+		t.Errorf("json.Marshal error: %s", err)
+		return
+	}
+	if !bytes.Equal(jejson, jvjson) {
+		t.Errorf("json not equal:\n%s\n%s", string(jejson), string(jvjson))
 	}
 }
