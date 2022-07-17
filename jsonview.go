@@ -241,44 +241,52 @@ func (mo *JsonView[T]) Scan(value interface{}) error {
 	if value == nil {
 		return nil
 	}
-	switch b := value.(type) {
+
+	var b []byte
+
+	switch bb := value.(type) {
 	case []byte:
-		if bytes.EqualFold(b, []byte("null")) {
-			mo.MD = nil
-			return nil
-		}
-		if mo.MD == nil {
-			return fmt.Errorf("model description not found for %T", mo.V)
-		}
+		b = bb
+	case string:
+		b = []byte(bb)
+	default:
+		return fmt.Errorf("unsupported database data type %T, needs []byte", value)
+	}
 
-		iter := jsoniter.ParseBytes(jsoniter.ConfigCompatibleWithStandardLibrary, b)
-		if iter.WhatIsNext() != jsoniter.ObjectValue {
-			return fmt.Errorf("json must contain an object: %s", string(b))
-		}
-
-		morv := reflect.ValueOf(&mo.V)
-		mo.Filled = make([]*FieldDescription, 0, len(mo.MD.columns))
-
-		iter.ReadObjectCB(func(it *jsoniter.Iterator, k string) bool {
-			fd, ok := mo.MD.columnByName[k]
-			if !ok {
-				return true
-			}
-
-			if fd.Skip || fd.StructField.Tag.Get(TagDBName) == "-" {
-				newv := reflect.Zero(fd.StructField.Type)
-				morv.Elem().FieldByName(fd.StructField.Name).Set(newv)
-				return true
-			}
-
-			mo.Filled = append(mo.Filled, fd)
-			f := morv.Elem().FieldByName(fd.StructField.Name).Addr().Interface()
-			it.ReadVal(f)
-
-			return true
-		})
-
+	if bytes.EqualFold(b, []byte("null")) {
+		mo.MD = nil
 		return nil
 	}
-	return fmt.Errorf("unsupported database data type %T, needs []byte", value)
+	if mo.MD == nil {
+		return fmt.Errorf("model description not found for %T", mo.V)
+	}
+
+	iter := jsoniter.ParseBytes(jsoniter.ConfigCompatibleWithStandardLibrary, b)
+	if iter.WhatIsNext() != jsoniter.ObjectValue {
+		return fmt.Errorf("json must contain an object: %s", string(b))
+	}
+
+	morv := reflect.ValueOf(&mo.V)
+	mo.Filled = make([]*FieldDescription, 0, len(mo.MD.columns))
+
+	iter.ReadObjectCB(func(it *jsoniter.Iterator, k string) bool {
+		fd, ok := mo.MD.columnByName[k]
+		if !ok {
+			return true
+		}
+
+		if fd.Skip || fd.StructField.Tag.Get(TagDBName) == "-" {
+			newv := reflect.Zero(fd.StructField.Type)
+			morv.Elem().FieldByName(fd.StructField.Name).Set(newv)
+			return true
+		}
+
+		mo.Filled = append(mo.Filled, fd)
+		f := morv.Elem().FieldByName(fd.StructField.Name).Addr().Interface()
+		it.ReadVal(f)
+
+		return true
+	})
+
+	return nil
 }
