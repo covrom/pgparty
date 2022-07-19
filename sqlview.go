@@ -173,3 +173,15 @@ func (mo *SQLView[T]) Scan(rows sqlx.ColScanner, prefix string) error {
 
 	return rows.Scan(vals...)
 }
+
+func (sv *SQLView[T]) JsonView() *JsonView[T] {
+	jv := &JsonView[T]{
+		V:  sv.V,
+		MD: sv.MD,
+	}
+	if len(sv.Filled) > 0 {
+		jv.Filled = make([]*FieldDescription, len(sv.Filled))
+		copy(jv.Filled, sv.Filled)
+	}
+	return jv
+}

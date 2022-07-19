@@ -290,3 +290,15 @@ func (mo *JsonView[T]) Scan(value interface{}) error {
 
 	return nil
 }
+
+func (jv *JsonView[T]) SQLView() *SQLView[T] {
+	sv := &SQLView[T]{
+		V:  jv.V,
+		MD: jv.MD,
+	}
+	if len(jv.Filled) > 0 {
+		sv.Filled = make([]*FieldDescription, len(jv.Filled))
+		copy(sv.Filled, jv.Filled)
+	}
+	return sv
+}
