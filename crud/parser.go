@@ -1,4 +1,4 @@
-package pgparty
+package crud
 
 import (
 	"fmt"
