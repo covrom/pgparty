@@ -1,5 +1,10 @@
 package crud
 
+import (
+	"fmt"
+	"strings"
+)
+
 type QueryFields = []string
 
 type QueryFilter struct {
@@ -7,6 +12,41 @@ type QueryFilter struct {
 	Operator ComparisonOperator
 	Value    any
 }
+
+func (f QueryFilter) String() string {
+	if f.Value == nil {
+		return fmt.Sprintf("%s%s%s", f.Field, Delim, f.Operator)
+	}
+	return fmt.Sprintf("%s%s%s%s%s", f.Field, Delim, f.Operator, Delim, f.Value)
+}
+
+type QueryJoin struct {
+	Field  string
+	Select QueryFields
+}
+
+func (j QueryJoin) String() string {
+	if len(j.Select) == 0 {
+		return j.Field
+	}
+	return fmt.Sprintf("%s%s%s", j.Field, Delim, strings.Join(j.Select, DelimStr))
+}
+
+type QuerySort struct {
+	Field string
+	Order QuerySortOperator
+}
+
+func (s QuerySort) String() string {
+	return fmt.Sprintf("%s%s%s", s.Field, DelimStr, s.Order)
+}
+
+type QuerySortOperator string
+
+var (
+	SORT_ASC  QuerySortOperator = "ASC"
+	SORT_DESC QuerySortOperator = "DESC"
+)
 
 type ComparisonOperator string
 
