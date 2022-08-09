@@ -2,6 +2,7 @@ package crud
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -193,72 +194,79 @@ type SField interface {
 // 	$and?: never;
 //   }
 
-type SFields interface {
-	queryNode
-	fields()
+type SFields map[string]interface{}
+
+func (SFields) queryNode() {}
+func (SFields) cond()      {}
+func (fs SFields) validate() error {
+	for k, v := range fs {
+		switch k {
+		case "$and":
+			return fmt.Errorf("$and forbiden in fields")
+		case "$or":
+			if err := isArraySFieldsOrSConditionAND(v); err != nil {
+				return err
+			}
+		default:
+			if v != nil {
+				if err := isArraySFieldsOrSConditionAND(v); err != nil {
+					_, ok := v.(SField)
+					if !ok {
+						return fmt.Errorf("%T is not a field, array or slice", v)
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
 
-type SFieldsMapField map[string]SField
-
-func (SFieldsMapField) queryNode() {}
-func (SFieldsMapField) fields()    {}
-func (SFieldsMapField) cond()      {}
-
-type SFieldsMapFields map[string][]SFields
-
-func (SFieldsMapFields) queryNode() {}
-func (SFieldsMapFields) fields()    {}
-func (SFieldsMapFields) cond()      {}
-
-type SFieldsMapConditionAnd map[string][]SConditionAND
-
-func (SFieldsMapConditionAnd) queryNode() {}
-func (SFieldsMapConditionAnd) fields()    {}
-func (SFieldsMapConditionAnd) cond()      {}
-
-type SFieldsOrFields struct {
-	Or []SFields `json:"$or,omitempty"`
+func isArraySFieldsOrSConditionAND(v interface{}) error {
+	rv := reflect.Indirect(reflect.ValueOf(v))
+	switch rv.Kind() {
+	case reflect.Array, reflect.Slice:
+		for i := 0; i < rv.Len(); i++ {
+			elt := rv.Index(i).Type()
+			if elt == reflect.TypeOf(SConditionAND{}) || elt == reflect.TypeOf(SFields{}) {
+				continue
+			}
+			return fmt.Errorf("elem at index %d: type %s is not SConditionAND or SFields", i, elt)
+		}
+	}
+	return fmt.Errorf("%T is not an array or slice", v)
 }
 
-func (SFieldsOrFields) queryNode() {}
-func (SFieldsOrFields) fields()    {}
-func (SFieldsOrFields) cond()      {}
-
-type SFieldsOrConditionAnd struct {
-	Or []SConditionAND `json:"$or,omitempty"`
+//	type SConditionAND = {
+//		$and?: Array<SFields | SConditionAND>;
+//		$or?: never;
+//	  }
+type SConditionAND struct {
+	And []SCondition `json:"$and,omitempty"`
 }
 
-func (SFieldsOrConditionAnd) queryNode() {}
-func (SFieldsOrConditionAnd) fields()    {}
-func (SFieldsOrConditionAnd) cond()      {}
+func (SConditionAND) queryNode() {}
+func (SConditionAND) cond()      {}
 
-// type SConditionAND = {
-// 	$and?: Array<SFields | SConditionAND>;
-// 	$or?: never;
-//   }
-
-type SConditionAND interface {
-	queryNode
-	and()
-}
-
-type SConditionANDFields struct {
-	And []SFields `json:"$and,omitempty"`
-}
-
-func (SConditionANDFields) queryNode() {}
-func (SConditionANDFields) and()       {}
-func (SConditionANDFields) cond()      {}
-
-type SConditionANDConditionAnd struct {
-	And []SConditionAND `json:"$and,omitempty"`
-}
-
-func (SConditionANDConditionAnd) queryNode() {}
-func (SConditionANDConditionAnd) and()       {}
-func (SConditionANDConditionAnd) cond()      {}
-
+// type SCondition = SFields | SConditionAND;
 type SCondition interface {
 	queryNode
 	cond()
+}
+
+func CAnd(ands ...SCondition) SCondition {
+	if len(ands) == 1 {
+		return ands[0]
+	}
+	return SConditionAND{
+		And: ands,
+	}
+}
+
+func COr(ors ...SCondition) SCondition {
+	if len(ors) == 1 {
+		return ors[0]
+	}
+	return SFields{
+		"$or": ors,
+	}
 }
