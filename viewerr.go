@@ -1,5 +1,13 @@
 package pgparty
 
+type JsonViewer[T Storable] interface {
+	JsonView() JsonViewErr[T]
+}
+
+type SQLViewer[T Storable] interface {
+	SQLView() SQLViewErr[T]
+}
+
 type JsonViewErr[T Storable] struct {
 	Value *JsonView[T]
 	Err   error `json:"_err,omitempty"`
