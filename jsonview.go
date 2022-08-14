@@ -191,7 +191,7 @@ func (mo *JsonView[T]) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// json and jsonb value
+// sql database json/jsonb value
 func (mo *JsonView[T]) Value() (driver.Value, error) {
 	b := &bytes.Buffer{}
 	b.Grow(len(mo.Filled) * 32)
@@ -225,7 +225,7 @@ func (mo *JsonView[T]) Value() (driver.Value, error) {
 	return res, nil
 }
 
-// sql database method for json_agg(expression)
+// sql database json/jsonb value
 func (mo *JsonView[T]) Scan(value interface{}) error {
 	mo.V = *(new(T))
 	md, err := (MD[T]{Val: mo.V}).MD()

@@ -81,9 +81,45 @@ func (sr *PgStore) PrepGet(ctx context.Context, query string, dest interface{}, 
 		log.Println("PrepGet QuerySimpleProtocol: ", q)
 	}
 
-	err = sr.tx.Unsafe().GetContext(ctx, dest, q, args...)
-	if err != nil && err != sql.ErrNoRows {
-		log.Printf("PrepGet query %q error: %s", q, err)
+	rv := reflect.ValueOf(dest)
+	if rv.Kind() != reflect.Pointer {
+		return fmt.Errorf("dest is not a pointer")
+	}
+	rv = rv.Elem()
+	if !rv.IsValid() {
+		return fmt.Errorf("dest is nil pointer")
+	}
+	rt := rv.Type()
+	if reflect.PointerTo(rt).Implements(reflect.TypeOf((*RowScanner)(nil)).Elem()) {
+		rows, err := sr.tx.QueryxContext(ctx, q, args...)
+		if err != nil && err != sql.ErrNoRows {
+			log.Printf("PrepGet query %q error: %s", q, err)
+		}
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		if !rows.Next() {
+			if err := rows.Err(); err != nil {
+				log.Printf("PrepGet query %q error: %s", q, err)
+				return err
+			}
+			return sql.ErrNoRows
+		}
+
+		v := reflect.New(rt).Interface().(RowScanner)
+
+		if err := v.Scan(rows, ""); err != nil {
+			return err
+		}
+		rv.Set(reflect.ValueOf(v).Elem())
+
+		err = nil
+	} else {
+		err = sr.tx.Unsafe().GetContext(ctx, dest, q, args...)
+		if err != nil && err != sql.ErrNoRows {
+			log.Printf("PrepGet query %q error: %s", q, err)
+		}
 	}
 	return err
 }
@@ -98,6 +134,10 @@ func Select[T any](ctx context.Context, query string, dest *[]T, args ...interfa
 		return fmt.Errorf("PrepSelect: %w", err)
 	}
 	return s.Store.PrepSelect(ctx, query, dest, args...)
+}
+
+type RowScanner interface {
+	Scan(rows sqlx.ColScanner, prefix string) error
 }
 
 func (sr *PgStore) PrepSelect(ctx context.Context, query string, dest interface{}, args ...interface{}) error {
@@ -125,10 +165,44 @@ func (sr *PgStore) PrepSelect(ctx context.Context, query string, dest interface{
 		log.Println(q)
 	}
 
-	err = sr.tx.Unsafe().SelectContext(ctx, dest, q, args...)
-	if err != nil && err != sql.ErrNoRows {
-		log.Printf("PrepSelect query %q error: %s", q, err)
+	rv := reflect.ValueOf(dest)
+	if rv.Kind() != reflect.Pointer {
+		return fmt.Errorf("dest is not a pointer")
 	}
+	rv = rv.Elem()
+	if !rv.IsValid() || rv.Kind() != reflect.Slice {
+		return fmt.Errorf("dest is not a pointer to slice")
+	}
+	rt := rv.Type().Elem()
+	if reflect.PointerTo(rt).Implements(reflect.TypeOf((*RowScanner)(nil)).Elem()) {
+		rows, err := sr.tx.QueryxContext(ctx, q, args...)
+		if err != nil && err != sql.ErrNoRows {
+			log.Printf("PrepSelect query %q error: %s", q, err)
+		}
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			v := reflect.New(rt).Interface().(RowScanner)
+			err := v.Scan(rows, "")
+			if err != nil {
+				return err
+			}
+			rv.Set(reflect.Append(rv, reflect.ValueOf(v).Elem()))
+		}
+		if err := rows.Err(); err != nil {
+			log.Printf("PrepSelect query %q error: %s", q, err)
+			return err
+		}
+		err = nil
+	} else {
+		err = sr.tx.Unsafe().SelectContext(ctx, dest, q, args...)
+		if err != nil && err != sql.ErrNoRows {
+			log.Printf("PrepSelect query %q error: %s", q, err)
+		}
+	}
+
 	return err
 }
 

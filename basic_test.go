@@ -172,4 +172,109 @@ func TestBasicUsage(t *testing.T) {
 		t.Errorf("jv.UUID != el.ID.UUID: %s != %s", jv.UUID.String(), el.ID.UUID.String())
 		return
 	}
+
+	var svels []pgparty.SQLViewErr[BasicModel]
+	if err := shard.WithTx(ctx, func(ctx context.Context) error {
+		return pgparty.Select(ctx, `SELECT :ID,:AppXID FROM &BasicModel`, &svels)
+	}); err != nil {
+		t.Errorf("pgparty.Select error: %s", err)
+		return
+	}
+
+	if len(svels) == 0 {
+		t.Errorf("len(svels) == 0")
+		return
+	}
+
+	if svels[0].Value == nil {
+		t.Errorf("svels[0].Value == nil")
+		return
+	}
+
+	if svels[0].Value.V.ID != el.ID {
+		t.Errorf("pgparty.Select error: svels[0].ID != el.ID: %s != %s", svels[0].Value.V.ID, el.ID)
+		return
+	}
+
+	if svels[0].Value.V.AppXID != el.AppXID {
+		t.Errorf("pgparty.Select error: svels[0].Value.V.AppXID != el.AppXID: %v != %v",
+			svels[0].Value.V.AppXID, el.AppXID)
+		return
+	}
+
+	if len(svels[0].Value.Filled) != 2 {
+		t.Errorf("length svels[0].Value.Filled != 2")
+		return
+	}
+
+	jvel := svels[0].JsonView()
+	if len(jvel.Value.Filled) != 2 {
+		t.Errorf("length jvel.Value.Filled != 2")
+		return
+	}
+
+	jvb, err := json.Marshal(jvel)
+	if err != nil {
+		t.Errorf("jvel marshal error: %s", err)
+	}
+
+	jvbe := pgparty.JsonViewErr[BasicModel]{}
+	if err := json.Unmarshal(jvb, (&jvbe)); err != nil {
+		t.Errorf("json.Unmarshal(jvb,(&jvbe)) error: %s", err)
+		return
+	}
+	if jvel.Value.V.ID != jvbe.Value.V.ID {
+		t.Errorf("jvel.Value.V.ID != jvbe.Value.V.ID")
+		return
+	}
+
+	var svel pgparty.SQLViewErr[BasicModel]
+	if err := shard.WithTx(ctx, func(ctx context.Context) error {
+		return pgparty.Get(ctx, `SELECT :ID,:AppXID FROM &BasicModel`, &svel)
+	}); err != nil {
+		t.Errorf("pgparty.Get error: %s", err)
+		return
+	}
+
+	if svel.Value == nil {
+		t.Errorf("svel.Value == nil")
+		return
+	}
+
+	if svel.Value.V.ID != el.ID {
+		t.Errorf("pgparty.Get error: svel.ID != el.ID: %s != %s", svel.Value.V.ID, el.ID)
+		return
+	}
+
+	if svel.Value.V.AppXID != el.AppXID {
+		t.Errorf("pgparty.Get error: svel.Value.V.AppXID != el.AppXID: %v != %v",
+			svel.Value.V.AppXID, el.AppXID)
+		return
+	}
+
+	if len(svel.Value.Filled) != 2 {
+		t.Errorf("length svel.Value.Filled != 2")
+		return
+	}
+
+	jvel = svel.JsonView()
+	if len(jvel.Value.Filled) != 2 {
+		t.Errorf("length jvel.Value.Filled != 2")
+		return
+	}
+
+	jvb, err = json.Marshal(jvel)
+	if err != nil {
+		t.Errorf("jvel marshal error: %s", err)
+	}
+
+	jvbe = pgparty.JsonViewErr[BasicModel]{}
+	if err := json.Unmarshal(jvb, (&jvbe)); err != nil {
+		t.Errorf("json.Unmarshal(jvb,(&jvbe)) error: %s", err)
+		return
+	}
+	if jvel.Value.V.ID != jvbe.Value.V.ID {
+		t.Errorf("jvel.Value.V.ID != jvbe.Value.V.ID")
+		return
+	}
 }
