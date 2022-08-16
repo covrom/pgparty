@@ -11,11 +11,11 @@ type JsonErr struct {
 	Err error `json:"_err"`
 }
 
-type JsonViewer[T Storable] interface {
+type JsonViewErrer[T Storable] interface {
 	JsonView() JsonViewErr[T]
 }
 
-type SQLViewer[T Storable] interface {
+type SQLViewErrer[T Storable] interface {
 	SQLView() SQLViewErr[T]
 }
 

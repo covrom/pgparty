@@ -11,6 +11,10 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
+type JsonViewer[T Storable] interface {
+	JsonView() *JsonView[T]
+}
+
 type JsonView[T Storable] struct {
 	V      T
 	MD     *ModelDesc

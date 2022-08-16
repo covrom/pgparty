@@ -9,6 +9,10 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type SQLViewer[T Storable] interface {
+	SQLView() *SQLView[T]
+}
+
 type SQLView[T Storable] struct {
 	V      T
 	MD     *ModelDesc
