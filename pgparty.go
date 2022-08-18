@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"runtime/debug"
+	"path"
+	"runtime"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -83,6 +85,41 @@ func (sr PgStore) WithTx(ctx context.Context, f func(storeCopy *PgStore) error) 
 	return sr.WithBeginTx(ctx, f)
 }
 
+func IdentifyPanic() string {
+	var name, file string
+	var line int
+	var pc [16]uintptr
+
+	n := runtime.Callers(3, pc[:])
+	cnt := 0
+	for _, pc := range pc[:n] {
+		fn := runtime.FuncForPC(pc)
+		if fn == nil {
+			continue
+		}
+		file, line = fn.FileLine(pc)
+		fnname := fn.Name()
+		if strings.HasPrefix(fnname, "runtime.") {
+			continue
+		}
+		fnname = fmt.Sprintf("%s(%s:%d)", path.Base(fnname), file, line)
+		if name == "" {
+			name = fnname
+		} else {
+			name = name + ", " + fnname
+		}
+		cnt++
+		if cnt == 5 {
+			break
+		}
+	}
+	if name != "" {
+		return name
+	}
+
+	return fmt.Sprintf("pc:%x", pc[:n])
+}
+
 func (sr PgStore) WithBeginTx(ctx context.Context, f func(storeCopy *PgStore) error) (err error) {
 	var newTx *sqlx.Tx
 	if tx, e := sr.db.BeginTxx(ctx, nil); e != nil {
@@ -98,7 +135,7 @@ func (sr PgStore) WithBeginTx(ctx context.Context, f func(storeCopy *PgStore) er
 	defer func() {
 		if r := recover(); r != nil || !commit {
 			if r != nil {
-				log.Printf("!!! TRANSACTION PANIC !!! : %s\n%s", r, string(debug.Stack()))
+				log.Printf("!!! TRANSACTION PANIC !!! : %s\n%s", r, IdentifyPanic())
 			}
 			if e := newTx.Rollback(); e != nil {
 				err = e
