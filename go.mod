@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/covrom/rustime v1.0.1
 	github.com/ericlagergren/decimal v0.0.0-20211103172832-aca2edc11f73
+	github.com/go-chi/render v1.0.2
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.17.0
 	github.com/jmoiron/sqlx v1.3.5
@@ -18,6 +19,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
+	github.com/ajg/form v1.5.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/docker/cli v20.10.14+incompatible // indirect
