@@ -3,6 +3,7 @@ module github.com/covrom/pgparty
 go 1.18
 
 require (
+	github.com/btcsuite/btcutil v1.0.2
 	github.com/covrom/rustime v1.0.1
 	github.com/ericlagergren/decimal v0.0.0-20211103172832-aca2edc11f73
 	github.com/go-chi/render v1.0.2

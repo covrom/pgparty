@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/google/uuid"
 )
 
@@ -17,6 +18,7 @@ type UUIDv4 struct {
 
 func init() {
 	gob.Register(&UUIDv4{})
+	gob.Register(&UUID58{})
 }
 
 func (UUIDv4) PostgresType() string {
@@ -138,6 +140,107 @@ func (u *UUIDv4) ConvertFrom(v interface{}) error {
 		*u = *vv
 		return nil
 	}
+	if err := u.Scan(v); err != nil {
+		return err
+	}
+	return nil
+}
+
+type UUID58 UUIDv4
+
+func (UUID58) PostgresType() string {
+	return "UUID"
+}
+
+func (UUID58) PostgresDefaultValue() string {
+	var empty UUIDv4
+	return fmt.Sprintf(`'%s'`, empty)
+}
+
+func (UUID58) PostgresAllowNull() bool {
+	return false
+}
+
+func (u UUID58) MarshalJSON() ([]byte, error) {
+	u58 := base58.Encode(u.UUID[:])
+	return json.Marshal(u58)
+}
+
+func (u *UUID58) UnmarshalJSON(b []byte) error {
+	if len(b) == 0 || bytes.EqualFold(b, []byte("null")) || bytes.EqualFold(b, []byte(`""`)) {
+		*u = UUID58{}
+		return nil
+	}
+	var u58 string
+	if err := json.Unmarshal(b, &u58); err != nil {
+		return err
+	}
+	if uid, err := uuid.FromBytes(base58.Decode(u58)); err != nil {
+		return err
+	} else {
+		u.UUID = uid
+	}
+	return nil
+}
+
+func (u UUID58) Value() (driver.Value, error) {
+	return []byte(u.UUID[:]), nil
+}
+
+func (u *UUID58) Scan(src interface{}) error {
+	return ((*UUIDv4)(u)).Scan(src)
+}
+
+func (u UUID58) IsZero() bool {
+	return UUIDv4(u).IsZero()
+}
+
+func (u UUID58) String() string {
+	return u.UUID.String()
+}
+
+func (u UUID58) GobEncode() ([]byte, error) {
+	return u.MarshalBinary()
+}
+
+func (u *UUID58) GobDecode(data []byte) error {
+	return (&(u.UUID)).UnmarshalBinary(data)
+}
+
+func UUIDNew58() UUID58 {
+	return UUID58{uuid.New()}
+}
+
+func UUID58FromString(s string) (UUID58, error) {
+	id, err := uuid.Parse(s)
+	return UUID58{id}, err
+}
+
+func UUID58MustFromString(s string) UUID58 {
+	id := uuid.MustParse(s)
+	return UUID58{id}
+}
+
+// store.Converter interface, u must contain zero value before call
+func (u *UUID58) ConvertFrom(v interface{}) error {
+	if v == nil {
+		return nil
+	}
+	switch vv := v.(type) {
+	case UUID58:
+		*u = vv
+		return nil
+	case *UUID58:
+		*u = *vv
+		return nil
+	case UUIDv4:
+		*u = UUID58(vv)
+		return nil
+	case *UUIDv4:
+		*u = UUID58(*vv)
+		return nil
+	}
+
 	if err := u.Scan(v); err != nil {
 		return err
 	}
