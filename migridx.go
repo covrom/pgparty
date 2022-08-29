@@ -40,9 +40,8 @@ func CurrentSchemaIndexes(ctx context.Context, tablename string) (DBIndexDefs, e
 	if stx == nil || stx.tx == nil {
 		return nil, fmt.Errorf("context must contains store transaction")
 	}
-	mdsn := stx.Schema()
-
-	tablename = mdsn + "." + tablename
+	// mdsn := stx.Schema()
+	// tablename = mdsn + "." + tablename
 
 	var idxs []DBIndexDef
 
