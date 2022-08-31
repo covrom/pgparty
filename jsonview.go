@@ -2,6 +2,7 @@ package pgparty
 
 import (
 	"bytes"
+	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,15 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 )
+
+type aJsonViewer interface {
+	aJsonView()
+}
+
+func IsJsonView(v interface{}) bool {
+	_, ok := v.(aJsonViewer)
+	return ok
+}
 
 type JsonViewer[T Storable] interface {
 	JsonView() *JsonView[T]
@@ -20,6 +30,10 @@ type JsonView[T Storable] struct {
 	MD     *ModelDesc
 	Filled []*FieldDescription
 }
+
+var _ aJsonViewer = &JsonView[Storable]{}
+
+func (mo *JsonView[T]) aJsonView() {}
 
 func (mo *JsonView[T]) Valid() bool {
 	return len(mo.Filled) > 0 && mo.MD != nil
@@ -287,8 +301,15 @@ func (mo *JsonView[T]) Scan(value interface{}) error {
 
 		mo.Filled = append(mo.Filled, fd)
 		f := morv.Elem().FieldByName(fd.StructField.Name).Addr().Interface()
-		it.ReadVal(f)
-
+		if IsJsonView(f) &&
+			it.WhatIsNext() == jsoniter.ObjectValue {
+			if err := f.(sql.Scanner).Scan(it.SkipAndReturnBytes()); err != nil {
+				it.ReportError("sql.Scan", err.Error())
+				return false
+			}
+		} else {
+			it.ReadVal(f)
+		}
 		return true
 	})
 
