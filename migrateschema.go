@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-func SaveModelConfig(ctx context.Context, md *ModelDesc) error {
-	c, err := DbConfigTableFromModel(md)
+func (sr *PgStore) SaveModelConfig(ctx context.Context, md *ModelDesc) error {
+	c, err := sr.DbConfigTableFromModel(ctx, md)
 	if err != nil {
 		return err
 	}

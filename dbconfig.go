@@ -16,8 +16,8 @@ type DbConfigTable struct {
 	Storej    *modelcols.SQLModel `db:"storej"`
 }
 
-func DbConfigTableFromModel(md *ModelDesc) (*DbConfigTable, error) {
-	sqs, err := MD2SQLModel(md)
+func (sr *PgStore) DbConfigTableFromModel(ctx context.Context, md *ModelDesc) (*DbConfigTable, error) {
+	sqs, err := sr.MD2SQLModel(ctx, md)
 	if err != nil {
 		return nil, err
 	}

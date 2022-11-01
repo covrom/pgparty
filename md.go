@@ -1,6 +1,7 @@
 package pgparty
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sync"
@@ -93,6 +94,10 @@ type ModelDesc struct {
 	columnByName      map[string]*FieldDescription
 	columnByFieldName map[string]*FieldDescription
 	columnByJsonName  map[string]*FieldDescription
+
+	viewQuery      string
+	isView         bool
+	isMaterialized bool
 }
 
 // Получение типа модели
@@ -125,6 +130,35 @@ func (md *ModelDesc) WalkColumnPtrs(f func(i int, v *FieldDescription) error) er
 		}
 	}
 	return nil
+}
+
+func (md ModelDesc) IsView() bool {
+	return md.isView
+}
+
+func (md ModelDesc) IsMaterialized() bool {
+	return md.isMaterialized
+}
+
+func (md ModelDesc) ViewQuery(ctx context.Context, sr *PgStore) (string, error) {
+	return sr.PrepareQuery(ctx, md.viewQuery)
+}
+
+func viewAttrs(typ reflect.Type) (isView, isMaterialized bool, viewQuery string) {
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return
+	}
+	if !typ.Implements(reflect.TypeOf((*Viewable)(nil)).Elem()) {
+		return
+	}
+	isView = true
+	isMaterialized = typ.Implements(reflect.TypeOf((*MaterializedViewable)(nil)).Elem())
+	viewQuery = reflect.New(typ).Elem().Interface().(Viewable).ViewQuery()
+	return
 }
 
 // GetColumnByFieldName - get fd by struct field name
@@ -173,6 +207,8 @@ func (md *ModelDesc) init() error {
 	if err := fillColumns(md.modelType, &columns); err != nil {
 		return err
 	}
+
+	md.isView, md.isMaterialized, md.viewQuery = viewAttrs(md.modelType)
 
 	// fill shortcuts
 	for i := range columns {

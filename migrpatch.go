@@ -202,3 +202,77 @@ func (c PatchCreateTable) String() string {
 	}
 	return fmt.Sprintf("CREATE TABLE %s.%s (%s)", c.Schema, c.Table, strings.Join(res, ","))
 }
+
+type PatchView struct {
+	Schema string
+	Name   string
+
+	DropViews     []fmt.Stringer
+	CreateViews   []fmt.Stringer
+	DropIndexes   []fmt.Stringer
+	CreateIndexes []fmt.Stringer
+}
+
+func (pt *PatchView) AddDropViewPatch(cp fmt.Stringer) {
+	pt.DropViews = append(pt.DropViews, cp)
+}
+
+func (pt *PatchView) AddCreateViewPatch(cp fmt.Stringer) {
+	pt.CreateViews = append(pt.CreateViews, cp)
+}
+
+func (pt *PatchView) AddDropIndexPatch(cp fmt.Stringer) {
+	pt.DropIndexes = append(pt.DropIndexes, cp)
+}
+
+func (pt *PatchView) AddCreateIndexPatch(cp fmt.Stringer) {
+	pt.CreateIndexes = append(pt.CreateIndexes, cp)
+}
+
+func (pt PatchView) Queries() []string {
+	ret := make([]string, 0)
+	if len(pt.DropIndexes) > 0 {
+		for _, c := range pt.DropIndexes {
+			ret = append(ret, c.String())
+		}
+	}
+	if len(pt.DropViews) > 0 {
+		for _, c := range pt.DropViews {
+			ret = append(ret, c.String())
+		}
+	}
+	if len(pt.CreateViews) > 0 {
+		for _, c := range pt.CreateViews {
+			ret = append(ret, c.String())
+		}
+	}
+	if len(pt.CreateIndexes) > 0 {
+		for _, c := range pt.CreateIndexes {
+			ret = append(ret, c.String())
+		}
+	}
+	return ret
+}
+
+type PatchCreateView struct {
+	Schema       string
+	Table        string
+	Query        string
+	Materialized bool
+}
+
+func (c PatchCreateView) String() string {
+	if c.Materialized {
+		return fmt.Sprintf("CREATE MATERIALIZED VIEW %s.%s AS %s", c.Schema, c.Table, c.Query)
+	}
+	return fmt.Sprintf("CREATE OR REPLACE VIEW %s.%s AS %s", c.Schema, c.Table, c.Query)
+}
+
+type PatchDropView struct {
+	Schema string
+	Table  string
+}
+
+func (c PatchDropView) String() string {
+	return fmt.Sprintf("DROP VIEW IF EXISTS %s.%s", c.Schema, c.Table)
+}

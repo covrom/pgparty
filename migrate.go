@@ -44,7 +44,7 @@ func (sr *PgStore) Migrate(ctx context.Context, mProcessor MigrationProcessor) e
 				return err
 			}
 
-			sqsmd, err := MD2SQLModel(md)
+			sqsmd, err := stx.MD2SQLModel(ctxTx, md)
 			if err != nil {
 				return err
 			}

@@ -129,9 +129,16 @@ func Field2SQLColumn(f FieldDescription) (modelcols.SQLColumn, modelcols.SQLInde
 	return sqc, sqci, nil
 }
 
-func MD2SQLModel(md *ModelDesc) (*modelcols.SQLModel, error) {
+func (sr *PgStore) MD2SQLModel(ctx context.Context, md *ModelDesc) (*modelcols.SQLModel, error) {
+	vq, err := md.ViewQuery(ctx, sr)
+	if err != nil {
+		return nil, fmt.Errorf("MD2SQLModel: %w", err)
+	}
 	ret := &modelcols.SQLModel{
-		Table: md.StoreName(),
+		Table:          md.StoreName(),
+		IsView:         md.IsView(),
+		IsMaterialized: md.IsMaterialized(),
+		ViewQuery:      vq,
 	}
 	sqs := make(modelcols.SQLColumns, 0, md.ColumnPtrsCount())
 	sqis := make(modelcols.SQLIndexes, 0)
@@ -186,15 +193,6 @@ func MD2SQLModel(md *ModelDesc) (*modelcols.SQLModel, error) {
 	return ret, nil
 }
 
-func SQLCreateTable(pt *PatchTable, md *ModelDesc, schema string) error {
-	sqs, err := MD2SQLModel(md)
-	if err != nil {
-		return err
-	}
-	SQLCreateTableWithColumns(pt, sqs)
-	return nil
-}
-
 func SQLCreateTableWithColumns(pt *PatchTable, sqs *modelcols.SQLModel) {
 	pt.AddCreateTablePatch(
 		PatchCreateTable{
@@ -211,6 +209,28 @@ func SQLCreateTableWithColumns(pt *PatchTable, sqs *modelcols.SQLModel) {
 				Index:  idx,
 			},
 		)
+	}
+}
+
+func SQLCreateView(pt *PatchView, sqs *modelcols.SQLModel) {
+	pt.AddCreateViewPatch(
+		PatchCreateView{
+			Schema:       pt.Schema,
+			Table:        pt.Name,
+			Query:        sqs.ViewQuery,
+			Materialized: sqs.IsMaterialized,
+		},
+	)
+	if sqs.IsMaterialized {
+		for _, idx := range sqs.Indexes {
+			pt.AddCreateIndexPatch(
+				PatchCreateIndex{
+					Schema: pt.Schema,
+					Table:  pt.Name,
+					Index:  idx,
+				},
+			)
+		}
 	}
 }
 
@@ -398,14 +418,27 @@ func SQLCreateModelWithColumns(ctx context.Context, md *ModelDesc, sqs *modelcol
 	}
 	sn := stx.Schema()
 
-	pt := &PatchTable{
-		Schema: sn,
-		Name:   md.StoreName(),
+	var qsqls []string
+
+	if md.IsView() {
+		pv := &PatchView{
+			Schema: sn,
+			Name:   md.StoreName(),
+		}
+
+		SQLCreateView(pv, sqs)
+
+		qsqls = pv.Queries()
+	} else {
+		pt := &PatchTable{
+			Schema: sn,
+			Name:   md.StoreName(),
+		}
+
+		SQLCreateTableWithColumns(pt, sqs)
+
+		qsqls = pt.Queries()
 	}
-
-	SQLCreateTableWithColumns(pt, sqs)
-
-	qsqls := pt.Queries()
 
 	log.Println(strings.Join(qsqls, "\n"))
 
@@ -416,7 +449,7 @@ func SQLCreateModelWithColumns(ctx context.Context, md *ModelDesc, sqs *modelcol
 		}
 	}
 
-	return SaveModelConfig(ctx, md)
+	return stx.SaveModelConfig(ctx, md)
 }
 
 func SQLAlterModel(ctx context.Context, md *ModelDesc, mddbidxs DBIndexDefs, last, to *modelcols.SQLModel) error {
@@ -430,12 +463,16 @@ func SQLAlterModel(ctx context.Context, md *ModelDesc, mddbidxs DBIndexDefs, las
 	}
 	sn := stx.Schema()
 
-	colinfos, err := DBColumnsInfo(ctx, stx.tx, sn, md.StoreName())
-	if err != nil {
-		return fmt.Errorf("SQLAlterModel DBColumnsInfo error: %w", err)
+	var qsqls []string
+	if md.IsView() {
+		qsqls = SQLAlterView(sn, md.StoreName(), last, to, mddbidxs)
+	} else {
+		colinfos, err := DBColumnsInfo(ctx, stx.tx, sn, md.StoreName())
+		if err != nil {
+			return fmt.Errorf("SQLAlterModel DBColumnsInfo error: %w", err)
+		}
+		qsqls = SQLAlterTable(sn, md.StoreName(), last, to, colinfos, mddbidxs)
 	}
-
-	qsqls := SQLAlterTable(sn, md.StoreName(), last, to, colinfos, mddbidxs)
 
 	log.Println(strings.Join(qsqls, "\n"))
 
@@ -446,5 +483,25 @@ func SQLAlterModel(ctx context.Context, md *ModelDesc, mddbidxs DBIndexDefs, las
 		}
 	}
 
-	return SaveModelConfig(ctx, md)
+	return stx.SaveModelConfig(ctx, md)
+}
+
+func SQLAlterView(schema, tname string, last, to *modelcols.SQLModel, dbidxs DBIndexDefs) []string {
+	pt := &PatchView{
+		Schema: schema,
+		Name:   tname,
+	}
+	for _, idx := range last.Indexes {
+		pt.AddDropIndexPatch(PatchDropIndex{
+			Schema: schema,
+			Table:  tname,
+			Index:  idx.Name,
+		})
+	}
+	pt.AddDropViewPatch(PatchDropView{
+		Schema: schema,
+		Table:  tname,
+	})
+	SQLCreateView(pt, to)
+	return pt.Queries()
 }

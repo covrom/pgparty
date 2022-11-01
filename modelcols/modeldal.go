@@ -7,9 +7,12 @@ import (
 )
 
 type SQLModel struct {
-	Table   string     `json:"table"`
-	Columns SQLColumns `json:"cols,omitempty"`
-	Indexes SQLIndexes `json:"idxs,omitempty"`
+	Table          string     `json:"table"`
+	Columns        SQLColumns `json:"cols,omitempty"`
+	Indexes        SQLIndexes `json:"idxs,omitempty"`
+	ViewQuery      string     `json:"viewQuery,omitempty"`
+	IsView         bool       `json:"isView,omitempty"`
+	IsMaterialized bool       `json:"isMaterialized,omitempty"`
 }
 
 func (f SQLModel) String() string {
