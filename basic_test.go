@@ -64,7 +64,7 @@ func TestBasicUsage(t *testing.T) {
 		return
 	}
 	// this produces sql queries:
-	// CREATE TABLE shard1.basic_models (app_xid CHAR(20) NOT NULL,data jsonb,id UUID NOT NULL,trace_xid CHAR(20) NOT NULL,PRIMARY KEY (id))
+	// CREATE TABLE shard1.basic_models (app_xid VARCHAR(20) NOT NULL DEFAULT '00000000000000000000',data JSONB,id UUID NOT NULL,trace_xid VARCHAR(20) NOT NULL DEFAULT '00000000000000000000',PRIMARY KEY (id))
 	// CREATE UNIQUE INDEX basic_modelsappidx ON shard1.basic_models(app_xid )
 	// CREATE INDEX basic_modelstraceappidx ON shard1.basic_models(app_xid, trace_xid )
 	// INSERT INTO shard1._config (table_name,storej)
@@ -73,13 +73,22 @@ func TestBasicUsage(t *testing.T) {
 
 	// $1 =  basic_models ,
 	// $2 =  {"table":"basic_models","cols":[
-	// {"ColName":"app_xid","DataType":"CHAR(20)","DefaultValue":"","NotNull":true,"PrimaryKey":false},
-	// {"ColName":"data","DataType":"jsonb","DefaultValue":"","NotNull":false,"PrimaryKey":false},
+	// {"ColName":"app_xid","DataType":"VARCHAR(20)","DefaultValue":"'00000000000000000000'","NotNull":true,"PrimaryKey":false},
+	// {"ColName":"data","DataType":"JSONB","DefaultValue":"","NotNull":false,"PrimaryKey":false},
 	// {"ColName":"id","DataType":"UUID","DefaultValue":"","NotNull":true,"PrimaryKey":true},
-	// {"ColName":"trace_xid","DataType":"CHAR(20)","DefaultValue":"","NotNull":true,"PrimaryKey":false}],
-	// "idxs":[
+	// {"ColName":"trace_xid","DataType":"VARCHAR(20)","DefaultValue":"'00000000000000000000'","NotNull":true,"PrimaryKey":false}
+	// ],"idxs":[
 	// {"name":"appidx","isUnique":true,"columns":["app_xid"]},
 	// {"name":"traceappidx","columns":["app_xid","trace_xid"]}]}
+
+	// CREATE OR REPLACE VIEW shard1.basic_views AS SELECT  id, app_xid, trace_xid  FROM shard1.basic_models
+	// INSERT INTO shard1._config (table_name,storej)
+	// VALUES($1,$2) ON CONFLICT(table_name) DO
+	// UPDATE SET storej=excluded.storej , $1 =  basic_views , $2 =  {"table":"basic_views","cols":[
+	// {"ColName":"app_xid","DataType":"VARCHAR(20)","DefaultValue":"'00000000000000000000'","NotNull":true,"PrimaryKey":false},
+	// {"ColName":"id","DataType":"UUID","DefaultValue":"","NotNull":true,"PrimaryKey":true},
+	// {"ColName":"trace_xid","DataType":"VARCHAR(20)","DefaultValue":"'00000000000000000000'","NotNull":true,"PrimaryKey":false}
+	// ],"viewQuery":"SELECT  id, app_xid, trace_xid  FROM shard1.basic_models","isView":true}
 
 	// future migrations use this '_config' table for building differencies as ALTER DDL queries
 
@@ -124,6 +133,8 @@ func TestBasicUsage(t *testing.T) {
 		t.Errorf("pgparty.Select error: %s", err)
 		return
 	}
+	// this produces sql queries:
+	// SELECT * FROM shard1.basic_views
 
 	if els[0].ID != el.ID {
 		t.Errorf("pgparty.Select error: els[0].ID != el.ID: %s != %s", els[0].ID, el.ID)
