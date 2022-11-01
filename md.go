@@ -17,10 +17,21 @@ var mdRepo = mdMap{
 	m: make(map[reflect.Type]*ModelDesc),
 }
 
+// модедль не создается, только ищется
+func MDbyType(modelType reflect.Type) (*ModelDesc, error) {
+	mdRepo.RLock()
+	defer mdRepo.RUnlock()
+	if ret, ok := mdRepo.m[modelType]; ok {
+		return ret, nil
+	}
+	return nil, fmt.Errorf("%q is not a model", modelType)
+}
+
 type MD[T Storable] struct {
 	Val T
 }
 
+// будет найдена или создана модель
 func (m MD[T]) MD() (*ModelDesc, error) {
 	value := reflect.Indirect(reflect.ValueOf(m.Val))
 	if value.Kind() != reflect.Struct {
