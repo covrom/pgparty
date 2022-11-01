@@ -11,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Model example
 type BasicModel struct {
 	ID       pgparty.UUID[BasicModel]      `json:"id"`
 	Data     pgparty.NullJsonB             `json:"data"`
@@ -22,6 +23,21 @@ func (BasicModel) StoreName() string { return "basic_models" }
 
 func (BasicModel) UUIDPrefix() string { return "basic_model_" }
 
+// View example
+type BasicView struct {
+	ID       pgparty.UUID[BasicModel]      `json:"id"`
+	AppXID   pgparty.XID[pgparty.AppXID]   `json:"appId"`
+	TraceXID pgparty.XID[pgparty.TraceXID] `json:"traceId"`
+}
+
+func (BasicView) StoreName() string { return "basic_views" }
+func (BasicView) ViewQuery() string {
+	return `SELECT
+		:ID, :AppXID, :TraceXID
+		FROM &BasicModel`
+}
+
+// Test model and view example
 func TestBasicUsage(t *testing.T) {
 	if db == nil {
 		log.Fatal("run TestMain before")
@@ -34,6 +50,10 @@ func TestBasicUsage(t *testing.T) {
 
 	// register models in shard
 	if err := pgparty.Register(shard, pgparty.MD[BasicModel]{}); err != nil {
+		t.Errorf("pgparty.Register error: %s", err)
+		return
+	}
+	if err := pgparty.Register(shard, pgparty.MD[BasicView]{}); err != nil {
 		t.Errorf("pgparty.Register error: %s", err)
 		return
 	}
@@ -96,10 +116,25 @@ func TestBasicUsage(t *testing.T) {
 	// this produces sql queries:
 	// SELECT * FROM shard1.basic_models
 
+	// select stored data from view
+	var vels []BasicView
+	if err := shard.WithTx(ctx, func(ctx context.Context) error {
+		return pgparty.Select[BasicView](ctx, `SELECT * FROM &BasicView`, &vels)
+	}); err != nil {
+		t.Errorf("pgparty.Select error: %s", err)
+		return
+	}
+
 	if els[0].ID != el.ID {
 		t.Errorf("pgparty.Select error: els[0].ID != el.ID: %s != %s", els[0].ID, el.ID)
 		return
 	}
+
+	if vels[0].ID != el.ID {
+		t.Errorf("pgparty.Select error: vels[0].ID != el.ID: %s != %s", vels[0].ID, el.ID)
+		return
+	}
+
 	if els[0].Data.Valid != el.Data.Valid {
 		t.Errorf("pgparty.Select error: els[0].Data.Valid != el.Data.Valid: %v != %v", els[0].Data.Valid, el.Data.Valid)
 		return
