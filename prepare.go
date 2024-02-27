@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"runtime"
 
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -77,7 +77,7 @@ func (sr *PgStore) PrepGet(ctx context.Context, query string, dest interface{}, 
 		log.Println(q)
 	}
 	if IsSimpleProtocol(ctx) {
-		args = append([]interface{}{pgx.QuerySimpleProtocol(true)}, args...)
+		args = append([]interface{}{pgx.QueryExecModeSimpleProtocol}, args...)
 		log.Println("PrepGet QuerySimpleProtocol: ", q)
 	}
 
@@ -157,7 +157,7 @@ func (sr *PgStore) PrepSelect(ctx context.Context, query string, dest interface{
 	}
 
 	if IsSimpleProtocol(ctx) {
-		args = append([]interface{}{pgx.QuerySimpleProtocol(true)}, args...)
+		args = append([]interface{}{pgx.QueryExecModeSimpleProtocol}, args...)
 		log.Println("PrepSelect QuerySimpleProtocol: ", query)
 	}
 
@@ -279,7 +279,7 @@ func (sr *PgStore) PrepQueryx(ctx context.Context, query string, args ...interfa
 		log.Println(q)
 	}
 	if IsSimpleProtocol(ctx) {
-		args = append([]interface{}{pgx.QuerySimpleProtocol(true)}, args...)
+		args = append([]interface{}{pgx.QueryExecModeSimpleProtocol}, args...)
 		log.Println("PrepQueryx QuerySimpleProtocol: ", query)
 	}
 	res, err := sr.tx.QueryxContext(ctx, q, args...)
@@ -323,7 +323,7 @@ func (sr *PgStore) PrepSelectCursorWalk(ctx context.Context, cursorName, selectQ
 		log.Println(q)
 	}
 	if IsSimpleProtocol(ctx) {
-		args = append([]interface{}{pgx.QuerySimpleProtocol(true)}, args...)
+		args = append([]interface{}{pgx.QueryExecModeSimpleProtocol}, args...)
 	}
 
 	dstCursorQuery := fmt.Sprintf(`DECLARE %s CURSOR FOR %s`, cursorName, q)

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/jackc/pgx/v4/stdlib" // Postgresql driver
+	_ "github.com/jackc/pgx/v5/stdlib" // Postgresql driver
 	"github.com/jmoiron/sqlx"
 )
 
