@@ -11,7 +11,7 @@ import (
 	"github.com/covrom/pgparty/utils"
 )
 
-func Replace[T Storable](ctx context.Context, modelItem T) error {
+func Replace[T Storable](ctx context.Context, modelItem T, skipFields ...string) error {
 	s, err := ShardFromContext(ctx)
 	if err != nil {
 		_, file, no, ok := runtime.Caller(1)
@@ -20,11 +20,11 @@ func Replace[T Storable](ctx context.Context, modelItem T) error {
 		}
 		return fmt.Errorf("Replace: %w", err)
 	}
-	return s.Store.Replace(ctx, modelItem)
+	return s.Store.Replace(ctx, modelItem, skipFields...)
 }
 
-// Replace сохраняет новый или существующий элемент модели
-func (sr *PgStore) Replace(ctx context.Context, modelItem Storable) error {
+// Replace is "insert or update" operation using ID field as key
+func (sr *PgStore) Replace(ctx context.Context, modelItem Storable, skipFields ...string) error {
 	// ctx = WithLoggingQuery(ctx)
 	s, err := ShardFromContext(ctx)
 	if err != nil {
@@ -45,6 +45,16 @@ func (sr *PgStore) Replace(ctx context.Context, modelItem Storable) error {
 		for i := 0; i < md.ColumnPtrsCount(); i++ {
 			fd := md.ColumnPtr(i)
 			if fd.SkipReplace || !fd.IsStored() {
+				continue
+			}
+			fnd := false
+			for _, skf := range skipFields {
+				if skf == fd.StructField.Name {
+					fnd = true
+					break
+				}
+			}
+			if fnd {
 				continue
 			}
 			fv, err := utils.GetFieldValueByName(reflect.Indirect(reflect.ValueOf(modelItem)), fd.StructField.Name)
