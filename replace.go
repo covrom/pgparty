@@ -75,6 +75,9 @@ func (sr *PgStore) Replace(ctx context.Context, modelItem Storable, skipFields .
 			if k == md.IdField().Name {
 				continue
 			}
+			if crf := md.CreatedAtField(); crf != nil && crf.Name == k {
+				continue
+			}
 			updkeys = append(updkeys, k)
 			exclkeys = append(exclkeys, "excluded."+k)
 		}
