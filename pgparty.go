@@ -23,7 +23,16 @@ func WithTx(ctx context.Context, f func(context.Context) error) error {
 }
 
 func WithTxInShard(ctx context.Context, shardId string, f func(context.Context) error) error {
-	ctx, err := SelectShard(ctx, shardId)
+	olds, err := ShardFromContext(ctx)
+	if err == nil && olds.ID != shardId && olds.Store.tx != nil {
+		return fmt.Errorf("WithTxInShard %q: transaction in the other shard was initiated before: %q", shardId, olds.ID)
+	}
+
+	if err == nil && olds.ID == shardId {
+		return WithTx(ctx, f)
+	}
+
+	ctx, err = SelectShard(ctx, shardId)
 	if err != nil {
 		return fmt.Errorf("WithTxInShard: %w", err)
 	}
