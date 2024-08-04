@@ -280,7 +280,10 @@ func fillColumns(typ reflect.Type, columns *[]FieldDescription) error {
 		typ = typ.Elem()
 	}
 
-	if typ.Kind() != reflect.Struct {
+	isStruct := typ.Kind() == reflect.Struct
+	// isModeller := typ.Implements(reflect.TypeOf((*Modeller)(nil)).Elem())
+
+	if !isStruct {
 		return fmt.Errorf("%s not a struct or a pointer to struct", typ.String())
 	}
 
@@ -309,11 +312,11 @@ func fillColumns(typ reflect.Type, columns *[]FieldDescription) error {
 	return nil
 }
 
-func (md ModelDesc) CreateSlicePtr() interface{} {
+func (md ModelDesc) CreateSlicePtr() any {
 	slt := reflect.SliceOf(md.modelType)
 	return reflect.New(slt).Interface()
 }
 
-func (md ModelDesc) CreateElemPtr() interface{} {
+func (md ModelDesc) CreateElemPtr() any {
 	return reflect.New(md.modelType).Interface()
 }
