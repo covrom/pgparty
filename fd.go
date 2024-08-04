@@ -19,24 +19,24 @@ type FieldDescription struct {
 	ElemType        reflect.Type // type
 	DatabaseName    string       // database name
 	JsonName        string       // json name
-	Ln              int
-	Prec            int
-	SQLTypeDef      string
-	DefVal          string
-	Indexes         []string
-	GinIndexes      []string
-	UniqIndexes     []string
-	Nullable        bool
-	Skip            bool // database skip
-	SkipReplace     bool // ignore on upsert
-	FullTextEnabled bool
-	PK              bool
-	JsonSkip        bool // skip in json
-	JsonOmitEmpty   bool
-	IsID            bool
-	IsCreatedAt     bool
-	IsUpdatedAt     bool
-	IsDeletedAt     bool
+	Ln              int          // length for string and numbers
+	Prec            int          // precision length for float/decimals
+	SQLTypeDef      string       // raw postgres type definition
+	DefVal          string       // default postgres value
+	Indexes         []string     // btree index names
+	GinIndexes      []string     // gin index names
+	UniqIndexes     []string     // unique btree index names
+	Nullable        bool         // null is allowed
+	Skip            bool         // database skip
+	SkipReplace     bool         // ignore on upsert
+	FullTextEnabled bool         // enable fulltext search
+	PK              bool         // is primary key field
+	JsonSkip        bool         // skip in json
+	JsonOmitEmpty   bool         // omit empty on json marshal
+	IsID            bool         // ID field of model
+	IsCreatedAt     bool         // CreatedAt field of model
+	IsUpdatedAt     bool         // UpdatedAt field of model
+	IsDeletedAt     bool         // DeletedAt field of model
 }
 
 func NewFDByStructField(structField reflect.StructField) *FieldDescription {
