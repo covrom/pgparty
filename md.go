@@ -46,6 +46,7 @@ func (m MD[T]) MD() (*ModelDesc, error) {
 
 	md := &ModelDesc{
 		modelType: modelType,
+		typeName:  utils.GetUniqTypeName(modelType),
 		storeName: storeName,
 	}
 
@@ -82,6 +83,7 @@ func Register[T ModelDescriber](sh Shard, m T) error {
 
 type ModelDesc struct {
 	modelType reflect.Type
+	typeName  string
 	storeName string
 
 	idField        *FieldDescription
@@ -100,19 +102,16 @@ type ModelDesc struct {
 	isMaterialized bool
 }
 
-// Получение типа модели
 func (md ModelDesc) ModelType() reflect.Type {
 	return md.modelType
 }
 
-// Получение название типа модели
 func (md ModelDesc) StoreName() string {
 	return md.storeName
 }
 
-// Уникальные длинное имя
-func (md ModelDesc) UniqName() string {
-	return utils.GetUniqTypeName(md.modelType)
+func (md ModelDesc) TypeName() string {
+	return md.typeName // utils.GetUniqTypeName(md.modelType)
 }
 
 func (md *ModelDesc) IdField() *FieldDescription        { return md.idField }
@@ -261,6 +260,7 @@ func NewModelDescription[T Storable](m T) (*ModelDesc, error) {
 	storeName := m.StoreName()
 	modelDescription := ModelDesc{
 		modelType: modelType,
+		typeName:  utils.GetUniqTypeName(modelType),
 		storeName: storeName,
 	}
 
