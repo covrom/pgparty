@@ -30,7 +30,7 @@ func (ps *PgSelect) Field(model Storable, defval any, fieldName string) *PgSelec
 		panic(err.Error())
 	}
 
-	ps.cols = append(ps.cols, fmt.Sprintf("%s.%s.%s", ps.st.schema, md.StoreName(), fd.Name))
+	ps.cols = append(ps.cols, fmt.Sprintf("%s.%s.%s", ps.st.schema, md.DatabaseName(), fd.DatabaseName))
 
 	return ps
 }
@@ -40,6 +40,6 @@ func (ps *PgSelect) From(model Storable) *PgSelect {
 	if !ok {
 		panic(fmt.Sprintf("model %T is not registered", model))
 	}
-	ps.from = fmt.Sprintf("%s.%s", ps.st.schema, md.StoreName())
+	ps.from = fmt.Sprintf("%s.%s", ps.st.schema, md.DatabaseName())
 	return ps
 }

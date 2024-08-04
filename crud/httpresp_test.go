@@ -15,7 +15,7 @@ type Board struct {
 	Disabled bool   `json:"hided"`
 }
 
-func (m Board) StoreName() string {
+func (m Board) DatabaseName() string {
 	return "boards"
 }
 

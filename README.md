@@ -32,7 +32,7 @@ type BasicModel struct {
 	TraceXID pgparty.XID[pgparty.TraceXID] `json:"traceId"`
 }
 
-func (BasicModel) StoreName() string { return "basic_models" }
+func (BasicModel) DatabaseName() string { return "basic_models" }
 func (BasicModel) UUIDPrefix() string { return "basic_model_" }
 ```
 

@@ -34,7 +34,7 @@ func (sr *PgStore) Field(modelItem Storable, fieldName string) (interface{}, err
 	if err != nil {
 		return nil, err
 	}
-	fv, err := utils.GetFieldValueByName(reflect.Indirect(reflect.ValueOf(modelItem)), fd.StructField.Name)
+	fv, err := utils.GetFieldValueByName(reflect.Indirect(reflect.ValueOf(modelItem)), fd.FieldName)
 	if err != nil {
 		return nil, err
 	}

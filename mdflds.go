@@ -40,15 +40,15 @@ func ModelsAndFields(ctx context.Context, st *PgStore) ([]Mdjs, error) {
 				continue
 			}
 			m.Fields = append(m.Fields,
-				MdjsField{":" + fd.StructField.Name, fd.Name, fd.StructField.Type, fd},
-				MdjsField{":" + md.ModelType().Name() + "." + fd.StructField.Name, fd.Name, fd.StructField.Type, fd})
+				MdjsField{":" + fd.FieldName, fd.DatabaseName, fd.ElemType, fd},
+				MdjsField{":" + md.ModelType().Name() + "." + fd.FieldName, fd.DatabaseName, fd.ElemType, fd})
 		}
 
 		dbcols := make([]string, 0, 10)
 		if err := st.WithTx(ctx, func(stx *PgStore) error {
 			return stx.Tx().SelectContext(ctx, &dbcols,
 				`SELECT column_name FROM information_schema.columns 
-				WHERE table_name = '`+md.StoreName()+`' AND table_schema = '`+sn+`'`)
+				WHERE table_name = '`+md.DatabaseName()+`' AND table_schema = '`+sn+`'`)
 		}); err != nil && err != sql.ErrNoRows {
 			return nil, fmt.Errorf("select column names: %s", err)
 		}

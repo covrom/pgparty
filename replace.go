@@ -49,7 +49,7 @@ func (sr *PgStore) Replace(ctx context.Context, modelItem Storable, skipFields .
 			}
 			fnd := false
 			for _, skf := range skipFields {
-				if skf == fd.StructField.Name {
+				if skf == fd.FieldName {
 					fnd = true
 					break
 				}
@@ -57,11 +57,11 @@ func (sr *PgStore) Replace(ctx context.Context, modelItem Storable, skipFields .
 			if fnd {
 				continue
 			}
-			fv, err := utils.GetFieldValueByName(reflect.Indirect(reflect.ValueOf(modelItem)), fd.StructField.Name)
+			fv, err := utils.GetFieldValueByName(reflect.Indirect(reflect.ValueOf(modelItem)), fd.FieldName)
 			if err != nil {
 				return err
 			}
-			cols = append(cols, fd.Name)
+			cols = append(cols, fd.DatabaseName)
 			vals = append(vals, fv.Interface())
 		}
 
@@ -72,28 +72,28 @@ func (sr *PgStore) Replace(ctx context.Context, modelItem Storable, skipFields .
 		updkeys := make([]string, 0, len(cols))
 		exclkeys := make([]string, 0, len(cols))
 		for _, k := range cols {
-			if k == md.IdField().Name {
+			if k == md.IdField().DatabaseName {
 				continue
 			}
-			if crf := md.CreatedAtField(); crf != nil && crf.Name == k {
+			if crf := md.CreatedAtField(); crf != nil && crf.DatabaseName == k {
 				continue
 			}
 			updkeys = append(updkeys, k)
 			exclkeys = append(exclkeys, "excluded."+k)
 		}
-		mdsn := sn + "." + md.StoreName()
+		mdsn := sn + "." + md.DatabaseName()
 		if len(updkeys) == 1 {
 			replQuery = fmt.Sprintf(`INSERT INTO %s (%s) VALUES(%s) ON CONFLICT(%s) DO UPDATE SET %s=%s`,
 				mdsn, strings.Join(cols, ","), fillers,
-				md.IdField().Name, strings.Join(updkeys, ","), strings.Join(exclkeys, ","))
+				md.IdField().DatabaseName, strings.Join(updkeys, ","), strings.Join(exclkeys, ","))
 		} else if len(updkeys) > 0 {
 			replQuery = fmt.Sprintf(`INSERT INTO %s (%s) VALUES(%s) ON CONFLICT(%s) DO UPDATE SET (%s)=(%s)`,
 				mdsn, strings.Join(cols, ","), fillers,
-				md.IdField().Name, strings.Join(updkeys, ","), strings.Join(exclkeys, ","))
+				md.IdField().DatabaseName, strings.Join(updkeys, ","), strings.Join(exclkeys, ","))
 		} else {
 			replQuery = fmt.Sprintf(`INSERT INTO %s (%s) VALUES(%s) ON CONFLICT(%s) DO NOTHING`,
 				mdsn, strings.Join(cols, ","), fillers,
-				md.IdField().Name)
+				md.IdField().DatabaseName)
 		}
 
 		if IsLoggingQuery(ctx) {

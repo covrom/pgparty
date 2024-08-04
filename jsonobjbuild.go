@@ -21,7 +21,7 @@ func (sr *Store) JSONBuildObjectSQL(md *ModelDesc, prefix string, onlyStructFiel
 		if len(onlyStructFieldNames) > 0 {
 			fnd := false
 			for _, v := range onlyStructFieldNames {
-				if fd.StructField.Name == v {
+				if fd.FieldName == v {
 					fnd = true
 					break
 				}
@@ -35,7 +35,7 @@ func (sr *Store) JSONBuildObjectSQL(md *ModelDesc, prefix string, onlyStructFiel
 		}
 		// только хранимые поля
 		if !fd.Skip {
-			fmt.Fprintf(sb, `'%s',%s%s`, fd.JsonName, prefix, fd.StructField.Name)
+			fmt.Fprintf(sb, `'%s',%s%s`, fd.JsonName, prefix, fd.FieldName)
 			needComma = true
 		}
 	}

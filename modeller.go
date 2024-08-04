@@ -7,18 +7,11 @@ import (
 	"github.com/covrom/pgparty/utils"
 )
 
-type Modeller interface {
-	ReflectType() reflect.Type
-	TypeName() string
-	DatabaseName() string
-	Fields() []FieldDescription
+type StructModel struct {
+	M Storable
 }
 
-type StructModel[T Storable] struct {
-	M T
-}
-
-func (s StructModel[T]) ReflectType() reflect.Type {
+func (s StructModel) ReflectType() reflect.Type {
 	_, typ := reflStructType(s.M)
 	return typ
 }
@@ -31,15 +24,15 @@ func reflStructType(m any) (reflect.Value, reflect.Type) {
 	return value, value.Type()
 }
 
-func (s StructModel[T]) TypeName() string {
+func (s StructModel) TypeName() string {
 	return utils.GetUniqTypeName(s.ReflectType())
 }
 
-func (s StructModel[T]) DatabaseName() string {
-	return s.M.StoreName()
+func (s StructModel) DatabaseName() string {
+	return s.M.DatabaseName()
 }
 
-func (s StructModel[T]) Fields() []FieldDescription {
+func (s StructModel) Fields() []FieldDescription {
 	rv, typ := reflStructType(s.M)
 	columns := make([]FieldDescription, 0, typ.NumField())
 	structFields(rv, &columns)
@@ -55,12 +48,10 @@ func structFields(rv reflect.Value, columns *[]FieldDescription) {
 			continue
 		}
 
-		ft := structField.Type
 		frv := rv.FieldByName(structField.Name)
 
 		if structField.Anonymous {
-			if ft.Implements(reflect.TypeFor[Modeller]()) {
-				m := frv.Interface().(Modeller) // reflect.New(ft).Elem().Interface().(Modeller)
+			if m, ok := frv.Interface().(Modeller); ok {
 				mfds := m.Fields()
 				*columns = append(*columns, mfds...)
 			} else {
@@ -69,10 +60,9 @@ func structFields(rv reflect.Value, columns *[]FieldDescription) {
 			continue
 		}
 
-		if ft.Implements(reflect.TypeFor[FieldDescriber]()) {
-			v := frv.Interface().(FieldDescriber)
+		if v, ok := frv.Interface().(FieldDescriber); ok {
 			*columns = append(*columns, *v.FD())
-		} else if column := NewFieldDescription(structField); column != nil {
+		} else if column := NewFDByStructField(structField); column != nil {
 			*columns = append(*columns, *column)
 		}
 	}

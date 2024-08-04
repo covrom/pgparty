@@ -42,7 +42,7 @@ func (mo *SQLView[T]) IsFilled(structFieldNames ...string) bool {
 	for _, fn := range structFieldNames {
 		fnd := false
 		for _, fd := range mo.Filled {
-			if fd.StructField.Name == fn {
+			if fd.FieldName == fn {
 				fnd = true
 			}
 		}
@@ -70,7 +70,7 @@ func (mo *SQLView[T]) SetUnfilled(structFieldNames ...string) error {
 	for _, fd := range mo.Filled {
 		fnd := false
 		for _, fn := range structFieldNames {
-			if fd.StructField.Name == fn {
+			if fd.FieldName == fn {
 				fnd = true
 				break
 			}
@@ -116,7 +116,7 @@ func (mo *SQLView[T]) Columns() []string {
 		if fd.Skip {
 			continue
 		}
-		ret = append(ret, fd.Name)
+		ret = append(ret, fd.DatabaseName)
 	}
 	return ret
 }
@@ -127,7 +127,7 @@ func (mo *SQLView[T]) Values() []interface{} {
 		if fd.Skip {
 			continue
 		}
-		rv := reflect.ValueOf(mo.V).FieldByName(fd.StructField.Name)
+		rv := reflect.ValueOf(mo.V).FieldByName(fd.FieldName)
 		v := rv.Interface()
 		ret = append(ret, v)
 	}
@@ -165,12 +165,12 @@ func (mo *SQLView[T]) Scan(rows sqlx.ColScanner, prefix string) error {
 			cn = cn[len(prefix):]
 		}
 		fd, ok := mo.MD.columnByName[cn]
-		if !ok || fd.Skip || fd.StructField.Tag.Get(TagDBName) == "-" {
+		if !ok || fd.Skip {
 			vals[i] = new(interface{})
 			continue
 		}
 
-		vals[i] = morv.Elem().FieldByName(fd.StructField.Name).Addr().Interface()
+		vals[i] = morv.Elem().FieldByName(fd.FieldName).Addr().Interface()
 
 		mo.Filled = append(mo.Filled, fd)
 	}

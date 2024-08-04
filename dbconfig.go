@@ -22,7 +22,7 @@ func (sr *PgStore) DbConfigTableFromModel(ctx context.Context, md *ModelDesc) (*
 		return nil, err
 	}
 	ret := &DbConfigTable{
-		TableName: md.StoreName(),
+		TableName: md.DatabaseName(),
 		Storej:    sqs,
 	}
 	return ret, nil

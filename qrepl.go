@@ -24,7 +24,7 @@ func (md *ModelDesc) ReplaceEntries(schema string) ([]string, map[string]Replace
 
 	mdprefix := ":" + md.ModelType().Name()
 
-	schmd := schema + "." + md.StoreName()
+	schmd := schema + "." + md.DatabaseName()
 
 	rpls[mdrepl] = ReplaceEntry{schmd, schema, md.ModelType()}
 	rpls[mdprefix+".*"] = ReplaceEntry{schmd + ".*", schema, nil}
@@ -34,9 +34,9 @@ func (md *ModelDesc) ReplaceEntries(schema string) ([]string, map[string]Replace
 		if fd.Skip {
 			continue
 		}
-		rpls[":"+fd.StructField.Name] = ReplaceEntry{fd.Name, "", fd.StructField.Type}
-		rpls[mdprefix+"."+fd.StructField.Name] = ReplaceEntry{schmd + "." + fd.Name, "", fd.StructField.Type}
-		rpls[mdprefix+".json."+fd.StructField.Name] = ReplaceEntry{"'" + fd.JsonName + "'", "", fd.StructField.Type}
+		rpls[":"+fd.FieldName] = ReplaceEntry{fd.DatabaseName, "", fd.ElemType}
+		rpls[mdprefix+"."+fd.FieldName] = ReplaceEntry{schmd + "." + fd.DatabaseName, "", fd.ElemType}
+		rpls[mdprefix+".json."+fd.FieldName] = ReplaceEntry{"'" + fd.JsonName + "'", "", fd.ElemType}
 	}
 	return mdrepls, rpls, nil
 }

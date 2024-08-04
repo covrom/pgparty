@@ -18,7 +18,7 @@ type Test struct {
 	Subs        []SubTest      `json:"subs"`
 }
 
-func (Test) StoreName() string { return "test" }
+func (Test) DatabaseName() string { return "test" }
 
 type SubTest struct {
 	ID   pgparty.UUIDv4 `json:"id"`

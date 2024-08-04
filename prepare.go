@@ -54,7 +54,7 @@ func GetByID[T Storable](ctx context.Context, dest *T, id interface{}) error {
 		}
 		return fmt.Errorf("Get: %w", err)
 	}
-	return s.Store.PrepGet(ctx, fmt.Sprintf("SELECT * FROM %s WHERE id = ?", (*new(T)).StoreName()), dest, id)
+	return s.Store.PrepGet(ctx, fmt.Sprintf("SELECT * FROM %s WHERE id = ?", (*new(T)).DatabaseName()), dest, id)
 }
 
 func (sr *PgStore) PrepGet(ctx context.Context, query string, dest interface{}, args ...interface{}) error {

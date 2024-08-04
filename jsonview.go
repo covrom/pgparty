@@ -58,7 +58,7 @@ func (mo *JsonView[T]) IsFilled(structFieldNames ...string) bool {
 	for _, fn := range structFieldNames {
 		fnd := false
 		for _, fd := range mo.Filled {
-			if fd.StructField.Name == fn {
+			if fd.FieldName == fn {
 				fnd = true
 			}
 		}
@@ -86,7 +86,7 @@ func (mo *JsonView[T]) SetUnfilled(structFieldNames ...string) error {
 	for _, fd := range mo.Filled {
 		fnd := false
 		for _, fn := range structFieldNames {
-			if fd.StructField.Name == fn {
+			if fd.FieldName == fn {
 				fnd = true
 				break
 			}
@@ -133,7 +133,7 @@ func (mo *JsonView[T]) MarshalJSON() ([]byte, error) {
 	b.WriteByte('{')
 	comma := false
 	for _, fd := range mo.Filled {
-		rv := reflect.ValueOf(mo.V).FieldByName(fd.StructField.Name)
+		rv := reflect.ValueOf(mo.V).FieldByName(fd.FieldName)
 		v := rv.Interface()
 		if v == nil || fd.JsonName == "" {
 			continue
@@ -194,13 +194,13 @@ func (mo *JsonView[T]) UnmarshalJSON(b []byte) error {
 		}
 
 		if fd.JsonSkip {
-			newv := reflect.Zero(fd.StructField.Type)
-			morv.Elem().FieldByName(fd.StructField.Name).Set(newv)
+			newv := reflect.Zero(fd.ElemType)
+			morv.Elem().FieldByName(fd.FieldName).Set(newv)
 			return true
 		}
 
 		mo.Filled = append(mo.Filled, fd)
-		f := morv.Elem().FieldByName(fd.StructField.Name).Addr().Interface()
+		f := morv.Elem().FieldByName(fd.FieldName).Addr().Interface()
 		it.ReadVal(f)
 
 		return true
@@ -217,9 +217,9 @@ func (mo *JsonView[T]) Value() (driver.Value, error) {
 	b.WriteByte('{')
 	comma := false
 	for _, fd := range mo.Filled {
-		rv := reflect.ValueOf(mo.V).FieldByName(fd.StructField.Name)
+		rv := reflect.ValueOf(mo.V).FieldByName(fd.FieldName)
 		v := rv.Interface()
-		if fd.Skip || fd.StructField.Tag.Get(TagDBName) == "-" {
+		if fd.Skip {
 			continue
 		}
 
@@ -227,7 +227,7 @@ func (mo *JsonView[T]) Value() (driver.Value, error) {
 			b.WriteByte(',')
 		}
 		b.WriteByte('"')
-		b.WriteString(fd.Name)
+		b.WriteString(fd.DatabaseName)
 		b.WriteByte('"')
 		b.WriteByte(':')
 
@@ -293,14 +293,14 @@ func (mo *JsonView[T]) Scan(value interface{}) error {
 			return true
 		}
 
-		if fd.Skip || fd.StructField.Tag.Get(TagDBName) == "-" {
-			newv := reflect.Zero(fd.StructField.Type)
-			morv.Elem().FieldByName(fd.StructField.Name).Set(newv)
+		if fd.Skip {
+			newv := reflect.Zero(fd.ElemType)
+			morv.Elem().FieldByName(fd.FieldName).Set(newv)
 			return true
 		}
 
 		mo.Filled = append(mo.Filled, fd)
-		f := morv.Elem().FieldByName(fd.StructField.Name).Addr().Interface()
+		f := morv.Elem().FieldByName(fd.FieldName).Addr().Interface()
 		if IsJsonView(f) &&
 			it.WhatIsNext() == jsoniter.ObjectValue {
 			if err := f.(sql.Scanner).Scan(it.SkipAndReturnBytes()); err != nil {

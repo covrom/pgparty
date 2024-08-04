@@ -31,16 +31,16 @@ func (sr *PgStore) Migrate(ctx context.Context, mProcessor MigrationProcessor) e
 				return err
 			}
 
-			dbidxs, err := CurrentSchemaIndexes(ctxTx, md.StoreName())
+			dbidxs, err := CurrentSchemaIndexes(ctxTx, md.DatabaseName())
 			if err != nil {
 				return fmt.Errorf("Migrate CurrentSchemaIndexes error: %w", err)
 			}
 
-			log.Printf("db table %s have indexes: %s", mdsn+"."+md.StoreName(), dbidxs)
+			log.Printf("db table %s have indexes: %s", mdsn+"."+md.DatabaseName(), dbidxs)
 
 			// грузим конфиг схемы
 			dbconf := &DbConfigTable{}
-			if err := dbconf.LoadTable(ctxTx, md.StoreName()); err != nil {
+			if err := dbconf.LoadTable(ctxTx, md.DatabaseName()); err != nil {
 				return err
 			}
 

@@ -19,7 +19,7 @@ type BasicModel struct {
 	TraceXID pgparty.XID[pgparty.TraceXID] `json:"traceId" key:"traceappidx"`
 }
 
-func (BasicModel) StoreName() string { return "basic_models" }
+func (BasicModel) DatabaseName() string { return "basic_models" }
 
 func (BasicModel) UUIDPrefix() string { return "basic_model_" }
 
@@ -30,7 +30,7 @@ type BasicView struct {
 	TraceXID pgparty.XID[pgparty.TraceXID] `json:"traceId"`
 }
 
-func (BasicView) StoreName() string { return "basic_views" }
+func (BasicView) DatabaseName() string { return "basic_views" }
 func (BasicView) ViewQuery() string {
 	return `SELECT
 		:ID, :AppXID, :TraceXID

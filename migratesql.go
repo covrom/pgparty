@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"reflect"
 	"sort"
 	"strings"
 
@@ -12,17 +11,17 @@ import (
 )
 
 func Field2SQLColumn(f FieldDescription) (modelcols.SQLColumn, modelcols.SQLIndexes, error) {
-	fld := f.StructField
-	ft := fld.Type
+	// fld := f.StructField
+	ft := f.ElemType
 	// isPtr := false
-	for ft.Kind() == reflect.Ptr {
-		ft = fld.Type.Elem()
-		// isPtr = true
-	}
+	// for ft.Kind() == reflect.Ptr {
+	// 	ft = fld.Type.Elem()
+	// 	// isPtr = true
+	// }
 
 	sqc := modelcols.SQLColumn{
 		// Table:      tname,
-		ColName:    f.Name,
+		ColName:    f.DatabaseName,
 		NotNull:    !f.Nullable,
 		PrimaryKey: f.PK,
 	}
@@ -50,7 +49,7 @@ func Field2SQLColumn(f FieldDescription) (modelcols.SQLColumn, modelcols.SQLInde
 		if len(idx) > 0 {
 			idxParts := strings.Split(idx, " ")
 			sqi := modelcols.SQLIndex{
-				Columns: []string{f.Name},
+				Columns: []string{f.DatabaseName},
 			}
 			for i, pi := range idxParts {
 				if i == 0 {
@@ -79,7 +78,7 @@ func Field2SQLColumn(f FieldDescription) (modelcols.SQLColumn, modelcols.SQLInde
 		if len(idx) > 0 {
 			idxParts := strings.Split(idx, " ")
 			sqi := modelcols.SQLIndex{
-				Columns:    []string{f.Name},
+				Columns:    []string{f.DatabaseName},
 				MethodName: "gin",
 			}
 			for i, pi := range idxParts {
@@ -100,7 +99,7 @@ func Field2SQLColumn(f FieldDescription) (modelcols.SQLColumn, modelcols.SQLInde
 		if len(idx) > 0 {
 			idxParts := strings.Split(idx, " ")
 			sqi := modelcols.SQLIndex{
-				Columns:  []string{f.Name},
+				Columns:  []string{f.DatabaseName},
 				IsUnique: true,
 			}
 			for i, pi := range idxParts {
@@ -135,7 +134,7 @@ func (sr *PgStore) MD2SQLModel(ctx context.Context, md *ModelDesc) (*modelcols.S
 		return nil, fmt.Errorf("MD2SQLModel: %w", err)
 	}
 	ret := &modelcols.SQLModel{
-		Table:          md.StoreName(),
+		Table:          md.DatabaseName(),
 		IsView:         md.IsView(),
 		IsMaterialized: md.IsMaterialized(),
 		ViewQuery:      vq,
@@ -423,7 +422,7 @@ func SQLCreateModelWithColumns(ctx context.Context, md *ModelDesc, sqs *modelcol
 	if md.IsView() {
 		pv := &PatchView{
 			Schema: sn,
-			Name:   md.StoreName(),
+			Name:   md.DatabaseName(),
 		}
 
 		SQLCreateView(pv, sqs)
@@ -432,7 +431,7 @@ func SQLCreateModelWithColumns(ctx context.Context, md *ModelDesc, sqs *modelcol
 	} else {
 		pt := &PatchTable{
 			Schema: sn,
-			Name:   md.StoreName(),
+			Name:   md.DatabaseName(),
 		}
 
 		SQLCreateTableWithColumns(pt, sqs)
@@ -465,13 +464,13 @@ func SQLAlterModel(ctx context.Context, md *ModelDesc, mddbidxs DBIndexDefs, las
 
 	var qsqls []string
 	if md.IsView() {
-		qsqls = SQLAlterView(sn, md.StoreName(), last, to, mddbidxs)
+		qsqls = SQLAlterView(sn, md.DatabaseName(), last, to, mddbidxs)
 	} else {
-		colinfos, err := DBColumnsInfo(ctx, stx.tx, sn, md.StoreName())
+		colinfos, err := DBColumnsInfo(ctx, stx.tx, sn, md.DatabaseName())
 		if err != nil {
 			return fmt.Errorf("SQLAlterModel DBColumnsInfo error: %w", err)
 		}
-		qsqls = SQLAlterTable(sn, md.StoreName(), last, to, colinfos, mddbidxs)
+		qsqls = SQLAlterTable(sn, md.DatabaseName(), last, to, colinfos, mddbidxs)
 	}
 
 	log.Println(strings.Join(qsqls, "\n"))

@@ -12,13 +12,13 @@ import (
 	"github.com/covrom/pgparty/utils"
 )
 
-// FieldDescription - универсальная структура, используемая во многих моделях и структурах.
+// Description of field in struct
 type FieldDescription struct {
-	Idx             int                 // индекс в слайсе ModelDescription.Columns
-	StructField     reflect.StructField // поле с базовыми характеристиками поля структуры
-	ElemType        reflect.Type        // тип элемента, который характеризует структура
-	Name            string              // store name (имя в хранилище)
-	JsonName        string
+	Idx             int          // index in ModelDescription.Columns
+	FieldName       string       // struct field name
+	ElemType        reflect.Type // type
+	DatabaseName    string       // database name
+	JsonName        string       // json name
 	Ln              int
 	Prec            int
 	SQLTypeDef      string
@@ -27,15 +27,19 @@ type FieldDescription struct {
 	GinIndexes      []string
 	UniqIndexes     []string
 	Nullable        bool
-	Skip            bool
-	SkipReplace     bool // игнорится только при реплейсе
+	Skip            bool // database skip
+	SkipReplace     bool // ignore on upsert
 	FullTextEnabled bool
 	PK              bool
-	JsonSkip        bool
+	JsonSkip        bool // skip in json
 	JsonOmitEmpty   bool
+	IsID            bool
+	IsCreatedAt     bool
+	IsUpdatedAt     bool
+	IsDeletedAt     bool
 }
 
-func NewFieldDescription(structField reflect.StructField) *FieldDescription {
+func NewFDByStructField(structField reflect.StructField) *FieldDescription {
 	fieldName := structField.Name
 
 	name := ToSnakeCase2(fieldName)
@@ -62,11 +66,11 @@ func NewFieldDescription(structField reflect.StructField) *FieldDescription {
 	}
 
 	column := FieldDescription{
-		StructField:     structField,
+		FieldName:       structField.Name,
 		ElemType:        elemType,
-		Name:            name,
+		DatabaseName:    name,
 		JsonName:        utils.JsonFieldName(structField),
-		Skip:            structField.Tag.Get(TagStore) == "-",
+		Skip:            name == "" || structField.Tag.Get(TagStore) == "-",
 		SkipReplace:     structField.Type == reflect.TypeOf(BigSerial{}),
 		Nullable:        SQLAllowNull(structField.Type),
 		FullTextEnabled: fullTextEnabled,
@@ -81,8 +85,6 @@ func NewFieldDescription(structField reflect.StructField) *FieldDescription {
 	case "false", "disabled", "no", "off", "0":
 		column.Nullable = false
 	}
-
-	column.Skip = structField.Tag.Get(TagStore) == "-"
 
 	if v, ok := structField.Tag.Lookup(TagPK); ok {
 		column.PK = v != "-"
@@ -124,12 +126,23 @@ func NewFieldDescription(structField reflect.StructField) *FieldDescription {
 		column.UniqIndexes = strings.Split(uniIndex, ",")
 	}
 
+	switch column.FieldName {
+	case IDField:
+		column.IsID = true
+	case CreatedAtField:
+		column.IsCreatedAt = true
+	case UpdatedAtField:
+		column.IsUpdatedAt = true
+	case DeletedAtField:
+		column.IsDeletedAt = true
+	}
+
 	return &column
 }
 
 // Вывод FieldDescription в виде сткроки
 func (fd FieldDescription) String() string {
-	ret := fd.StructField.Name
+	ret := fd.FieldName
 
 	if fd.Skip {
 		return "- " + ret + " [skip]"
@@ -140,7 +153,7 @@ func (fd FieldDescription) String() string {
 		nullable = "*"
 	}
 
-	ret = fmt.Sprintf("%s%s (store: %s)", nullable, ret, fd.Name)
+	ret = fmt.Sprintf("%s%s (db: %s)", nullable, ret, fd.DatabaseName)
 
 	return ret
 }
@@ -186,9 +199,9 @@ func (fdt *FD[T, PT]) FD() *FieldDescription {
 	panic(fmt.Sprintf("%T - fd not initialized", fdt))
 }
 
-func NewFD[T Valuer, PT Scanner[T]](structField reflect.StructField) *FD[T, PT] {
+func NewStructFieldFD[T Valuer, PT Scanner[T]](structField reflect.StructField) *FD[T, PT] {
 	return &FD[T, PT]{
-		fd:    NewFieldDescription(structField),
+		fd:    NewFDByStructField(structField),
 		V:     *(new(T)),
 		Valid: false,
 	}
