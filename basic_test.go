@@ -136,8 +136,18 @@ func TestBasicUsage(t *testing.T) {
 	// this produces sql queries:
 	// SELECT * FROM shard1.basic_views
 
+	if len(els) == 0 {
+		t.Errorf("pgparty.Select error: len(els) == 0")
+		return
+	}
+
 	if els[0].ID != el.ID {
 		t.Errorf("pgparty.Select error: els[0].ID != el.ID: %s != %s", els[0].ID, el.ID)
+		return
+	}
+
+	if len(vels) == 0 {
+		t.Errorf("pgparty.Select error: len(vels) == 0")
 		return
 	}
 
