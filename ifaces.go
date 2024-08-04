@@ -16,7 +16,7 @@ type Viewable interface {
 // MaterializedViewable is an interface that the materialized view-model structure must implement
 type MaterializedViewable interface {
 	Viewable
-	MaterializedView() // not called, define with empty body
+	MaterializedView() bool
 }
 
 // Modeller defines model with fields.

@@ -32,6 +32,16 @@ func (s StructModel) DatabaseName() string {
 	return s.M.DatabaseName()
 }
 
+func (s StructModel) ViewQuery() string {
+	_, _, viewQuery := viewAttrs(s.M)
+	return viewQuery
+}
+
+func (s StructModel) MaterializedView() bool {
+	_, isMaterialized, _ := viewAttrs(s.M)
+	return isMaterialized
+}
+
 func (s StructModel) Fields() []FieldDescription {
 	rv, typ := reflStructType(s.M)
 	columns := make([]FieldDescription, 0, typ.NumField())

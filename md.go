@@ -136,14 +136,24 @@ func (md ModelDesc) ViewQuery(ctx context.Context, sr *PgStore) (string, error) 
 	return sr.PrepareQuery(ctx, md.viewQuery)
 }
 
-func viewAttrs(m Modeller) (isView, isMaterialized bool, viewQuery string) {
+func viewAttrs(m any) (isView, isMaterialized bool, viewQuery string) {
 	var v Viewable
+	var vm MaterializedViewable
+
 	v, isView = m.(Viewable)
-	_, isMaterialized = m.(MaterializedViewable)
+	vm, isMaterialized = m.(MaterializedViewable)
 
 	if isView {
 		viewQuery = v.ViewQuery()
+		isView = viewQuery != ""
 	}
+
+	if isMaterialized {
+		isMaterialized = vm.MaterializedView()
+	}
+
+	isMaterialized = isMaterialized && isView
+
 	return
 }
 
