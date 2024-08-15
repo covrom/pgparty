@@ -16,6 +16,18 @@ type ModelObject struct {
 	md   *ModelDesc
 }
 
+func NewModelObject(md *ModelDesc) *ModelObject {
+	vals := make([]any, md.ColumnPtrsCount())
+	md.WalkColumnPtrs(func(i int, fd *FieldDescription) (e error) {
+		vals[i] = reflect.New(fd.ElemType).Elem().Interface()
+		return
+	})
+	return &ModelObject{
+		vals: vals,
+		md:   md,
+	}
+}
+
 func ModelObjectFrom[T Storable](ctx context.Context, modelItem T) (*ModelObject, error) {
 	s, err := ShardFromContext(ctx)
 	if err != nil {
