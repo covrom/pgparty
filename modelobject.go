@@ -9,6 +9,10 @@ import (
 	"github.com/covrom/pgparty/utils"
 )
 
+type ModelValuer interface {
+	FieldValue(fd *FieldDescription) (any, error)
+}
+
 // get field value by struct field name
 // defval must be Model{}.Field
 func Field[T Storable, F any](ctx context.Context, modelItem T, defval F, fieldName string) (F, error) {
@@ -24,7 +28,7 @@ func Field[T Storable, F any](ctx context.Context, modelItem T, defval F, fieldN
 }
 
 // get field value by struct field name
-func (sr *PgStore) Field(modelItem Storable, fieldName string) (interface{}, error) {
+func (sr *PgStore) Field(modelItem Storable, fieldName string) (any, error) {
 	sn := sr.Schema()
 	md, ok := sr.GetModelDescription(modelItem)
 	if !ok {
@@ -33,6 +37,16 @@ func (sr *PgStore) Field(modelItem Storable, fieldName string) (interface{}, err
 	fd, err := md.ColumnByFieldName(fieldName)
 	if err != nil {
 		return nil, err
+	}
+	return sr.FieldByFD(modelItem, fd)
+}
+
+func (sr *PgStore) FieldByFD(modelItem Storable, fd *FieldDescription) (any, error) {
+	if fd == nil {
+		return nil, fmt.Errorf("FieldByFD: fd is nil")
+	}
+	if mv, ok := modelItem.(ModelValuer); ok {
+		return mv.FieldValue(fd)
 	}
 	fv, err := utils.GetFieldValueByName(reflect.Indirect(reflect.ValueOf(modelItem)), fd.FieldName)
 	if err != nil {
@@ -81,7 +95,7 @@ func (sr *PgStore) ModelObjectFrom(modelItem Storable) (ModelObject, error) {
 	if !ok {
 		return ModelObject{}, fmt.Errorf("ModelObjectFrom error: cant't get model description for %T in schema %q", modelItem, sn)
 	}
-	idf, err := sr.Field(modelItem, IDField)
+	idf, err := sr.FieldByFD(modelItem, md.IdField())
 	if err != nil {
 		return ModelObject{}, err
 	}
