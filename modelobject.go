@@ -1,8 +1,13 @@
 package pgparty
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"reflect"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 type ModelObject struct {
@@ -63,5 +68,84 @@ func (m *ModelObject) SetValue(fd *FieldDescription, v any) error {
 		return fmt.Errorf("SetValue: fd is not exists in model description")
 	}
 	m.vals[fd.Idx] = v
+	return nil
+}
+
+func (m *ModelObject) String() string {
+	b, _ := json.Marshal(m)
+	return string(b)
+}
+
+func (m *ModelObject) MD() *ModelDesc {
+	return m.md
+}
+
+func (m *ModelObject) Clear() {
+	for i := range m.vals {
+		m.vals[i] = nil
+	}
+}
+
+func (m *ModelObject) MarshalJSON() ([]byte, error) {
+	b := &bytes.Buffer{}
+	b.Grow(len(m.vals) * 32)
+
+	enc := json.NewEncoder(b)
+
+	b.WriteByte('{')
+	comma := false
+
+	for fdi, v := range m.vals {
+		fd := m.md.ColumnPtr(fdi)
+		if fd.JsonName == "" || fd.JsonSkip {
+			continue
+		}
+
+		if fd.JsonOmitEmpty && reflect.ValueOf(v).IsZero() {
+			continue
+		}
+
+		if comma {
+			b.WriteByte(',')
+		}
+		b.WriteByte('"')
+		b.WriteString(fd.JsonName)
+		b.WriteByte('"')
+		b.WriteByte(':')
+
+		if err := enc.Encode(v); err != nil {
+			return nil, fmt.Errorf("ModelObject enc.Encode error: %w", err)
+		}
+
+		comma = true
+	}
+	b.WriteByte('}')
+	res := b.Bytes()
+
+	return res, nil
+}
+
+func (m *ModelObject) UnmarshalJSON(b []byte) error {
+	if bytes.EqualFold(b, []byte("null")) {
+		m.Clear()
+		return nil
+	}
+
+	iter := jsoniter.ParseBytes(jsoniter.ConfigCompatibleWithStandardLibrary, b)
+	if iter.WhatIsNext() != jsoniter.ObjectValue {
+		return fmt.Errorf("json must contain an object: %s", string(b))
+	}
+
+	iter.ReadObjectCB(func(it *jsoniter.Iterator, k string) bool {
+		fd, err := m.md.ColumnByJsonName(k)
+		if (err != nil) || fd.JsonSkip {
+			return true
+		}
+		tempv := reflect.New(fd.ElemType).Interface()
+		it.ReadVal(tempv)
+		m.vals[fd.Idx] = tempv
+		return true
+	})
+
 	return nil
 }
