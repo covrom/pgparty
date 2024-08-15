@@ -11,6 +11,7 @@ import (
 
 type ModelValuer interface {
 	FieldValue(fd *FieldDescription) (any, error)
+	SetValue(fd *FieldDescription, v any) error
 }
 
 // get field value by struct field name
