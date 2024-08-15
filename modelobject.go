@@ -50,6 +50,13 @@ func (m *ModelObject) FieldID() any {
 	return m.vals[m.md.IdField().Idx]
 }
 
+func (m *ModelObject) SetFieldID(id any) error {
+	if m.md.IdField() == nil {
+		return fmt.Errorf("id field not found")
+	}
+	return m.SetValue(m.md.IdField(), id)
+}
+
 func (m *ModelObject) FieldValue(fd *FieldDescription) (any, error) {
 	if fd == nil {
 		return nil, nil
@@ -67,7 +74,14 @@ func (m *ModelObject) SetValue(fd *FieldDescription, v any) error {
 	if _, ok := m.md.allFDs[fd]; !ok {
 		return fmt.Errorf("SetValue: fd is not exists in model description")
 	}
-	m.vals[fd.Idx] = v
+	if reflect.TypeOf(v).AssignableTo(fd.ElemType) {
+		m.vals[fd.Idx] = v
+	} else if reflect.TypeOf(v).ConvertibleTo(fd.ElemType) {
+		m.vals[fd.Idx] = reflect.ValueOf(v).Convert(fd.ElemType).Interface()
+	} else {
+		return fmt.Errorf("uncompatible type %T with field type %s", reflect.TypeOf(v), fd.ElemType.String())
+	}
+
 	return nil
 }
 
