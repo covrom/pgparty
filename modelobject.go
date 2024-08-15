@@ -71,6 +71,23 @@ func (m *ModelObject) SetValue(fd *FieldDescription, v any) error {
 	return nil
 }
 
+func (m *ModelObject) FieldValueByName(fn string) (any, error) {
+	fd, err := m.md.ColumnByFieldName(fn)
+	if err != nil {
+		return nil, err
+	}
+	return m.vals[fd.Idx], nil
+}
+
+func (m *ModelObject) SetValueByName(fn string, v any) error {
+	fd, err := m.md.ColumnByFieldName(fn)
+	if err != nil {
+		return err
+	}
+	m.vals[fd.Idx] = v
+	return nil
+}
+
 func (m *ModelObject) String() string {
 	b, _ := json.Marshal(m)
 	return string(b)
