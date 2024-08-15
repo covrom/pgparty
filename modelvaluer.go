@@ -9,6 +9,7 @@ import (
 )
 
 type ModelValuer interface {
+	FieldID() any
 	FieldValue(fd *FieldDescription) (any, error)
 	SetValue(fd *FieldDescription, v any) error
 }

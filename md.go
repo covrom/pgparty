@@ -82,6 +82,7 @@ type ModelDesc struct {
 
 	columns           []FieldDescription
 	columnPtrs        []*FieldDescription
+	allFDs            map[*FieldDescription]struct{}
 	columnByName      map[string]*FieldDescription // by database name
 	columnByFieldName map[string]*FieldDescription // by struct field name
 	columnByJsonName  map[string]*FieldDescription // by json name
@@ -222,11 +223,13 @@ func (md *ModelDesc) Init(m Modeller) error {
 	}
 
 	md.columnPtrs = make([]*FieldDescription, len(columns))
+	md.allFDs = make(map[*FieldDescription]struct{}, len(columns))
 	// should not be in the previous loop, because there should be no changes if an error is returned above
 	for i := range columns {
 		column := &columns[i]
 		column.Idx = i
 		md.columnPtrs[i] = column
+		md.allFDs[column] = struct{}{}
 
 		switch {
 		case column.IsID:

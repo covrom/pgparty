@@ -55,7 +55,7 @@ func (uo *UniqueObjects) CopyObjects() (res []ModelObject) {
 }
 
 func (uo *UniqueObjects) PutObject(data ModelObject) error {
-	id := data.idField
+	id := data.FieldID()
 	if id == nil {
 		return fmt.Errorf("UniqueObjects.AddObject: data doesn't have id value")
 	}
