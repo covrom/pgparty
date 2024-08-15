@@ -3,6 +3,7 @@ package pgparty
 import (
 	"bytes"
 	"context"
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -74,7 +75,9 @@ func (m *ModelObject) SetValue(fd *FieldDescription, v any) error {
 	if _, ok := m.md.allFDs[fd]; !ok {
 		return fmt.Errorf("SetValue: fd is not exists in model description")
 	}
-	if reflect.TypeOf(v).AssignableTo(fd.ElemType) {
+	if v == nil {
+		m.vals[fd.Idx] = v
+	} else if reflect.TypeOf(v).AssignableTo(fd.ElemType) {
 		m.vals[fd.Idx] = v
 	} else if reflect.TypeOf(v).ConvertibleTo(fd.ElemType) {
 		m.vals[fd.Idx] = reflect.ValueOf(v).Convert(fd.ElemType).Interface()
@@ -107,8 +110,8 @@ func (m *ModelObject) String() string {
 	return string(b)
 }
 
-func (m *ModelObject) MD() *ModelDesc {
-	return m.md
+func (m *ModelObject) MD() (*ModelDesc, error) {
+	return m.md, nil
 }
 
 func (m *ModelObject) Clear() {
@@ -174,7 +177,100 @@ func (m *ModelObject) UnmarshalJSON(b []byte) error {
 		}
 		tempv := reflect.New(fd.ElemType).Interface()
 		it.ReadVal(tempv)
-		m.vals[fd.Idx] = tempv
+		m.vals[fd.Idx] = reflect.Indirect(reflect.ValueOf(tempv)).Interface()
+		return true
+	})
+
+	return nil
+}
+
+func (m *ModelObject) DBData() (cols []string, vals []any) {
+	ln := m.md.ColumnPtrsCount()
+	cols = make([]string, 0, ln)
+	vals = make([]any, 0, ln)
+	for fdi, v := range m.vals {
+		fd := m.md.ColumnPtr(fdi)
+		if fd.Skip {
+			continue
+		}
+		cols = append(cols, fd.DatabaseName)
+		vals = append(vals, v)
+	}
+	return
+}
+
+// json and jsonb value
+func (m *ModelObject) Value() (driver.Value, error) {
+	b := &bytes.Buffer{}
+	b.Grow(m.md.ColumnPtrsCount() * 32)
+	enc := json.NewEncoder(b)
+	b.WriteByte('{')
+	comma := false
+	for fdi, v := range m.vals {
+		fd := m.md.ColumnPtr(fdi)
+		if fd.Skip {
+			continue
+		}
+
+		if comma {
+			b.WriteByte(',')
+		}
+		b.WriteByte('"')
+		b.WriteString(fd.DatabaseName)
+		b.WriteByte('"')
+		b.WriteByte(':')
+
+		if err := enc.Encode(v); err != nil {
+			return nil, fmt.Errorf("ModelObjectJson.Value error: %w", err)
+		}
+
+		comma = true
+	}
+	b.WriteByte('}')
+	res := b.Bytes()
+
+	return res, nil
+}
+
+// sql database method for json_agg(expression)
+func (m *ModelObject) Scan(value interface{}) error {
+	if m.md == nil {
+		return fmt.Errorf("ModelObject: model description is empty")
+	}
+
+	if value == nil {
+		return nil
+	}
+
+	var b []byte
+
+	switch bb := value.(type) {
+	case []byte:
+		b = bb
+	case string:
+		b = []byte(bb)
+	default:
+		return fmt.Errorf("unsupported database data type %T, needs []byte", value)
+	}
+
+	if bytes.EqualFold(b, []byte("null")) {
+		m.Clear()
+		return nil
+	}
+
+	iter := jsoniter.ParseBytes(jsoniter.ConfigCompatibleWithStandardLibrary, b)
+	if iter.WhatIsNext() != jsoniter.ObjectValue {
+		return fmt.Errorf("json must contain an object: %s", string(b))
+	}
+
+	iter.ReadObjectCB(func(it *jsoniter.Iterator, k string) bool {
+		fd, err := m.md.ColumnByDatabaseName(k)
+		if err != nil || fd.Skip {
+			return true
+		}
+		tempv := reflect.New(fd.ElemType).Interface()
+		it.ReadVal(tempv)
+		m.vals[fd.Idx] = reflect.Indirect(reflect.ValueOf(tempv)).Interface()
 		return true
 	})
 
