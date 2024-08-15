@@ -15,19 +15,19 @@ type ModelObject struct {
 	md   *ModelDesc
 }
 
-func ModelObjectFrom[T Storable](ctx context.Context, modelItem T) (ModelObject, error) {
+func ModelObjectFrom[T Storable](ctx context.Context, modelItem T) (*ModelObject, error) {
 	s, err := ShardFromContext(ctx)
 	if err != nil {
-		return ModelObject{}, fmt.Errorf("ModelObjectFrom: %w", err)
+		return nil, fmt.Errorf("ModelObjectFrom: %w", err)
 	}
 	return s.Store.ModelObjectFrom(modelItem)
 }
 
-func (sr *PgStore) ModelObjectFrom(modelItem Storable) (ModelObject, error) {
+func (sr *PgStore) ModelObjectFrom(modelItem Storable) (*ModelObject, error) {
 	sn := sr.Schema()
 	md, ok := sr.GetModelDescription(modelItem)
 	if !ok {
-		return ModelObject{}, fmt.Errorf("ModelObjectFrom error: cant't get model description for %T in schema %q", modelItem, sn)
+		return nil, fmt.Errorf("ModelObjectFrom error: cant't get model description for %T in schema %q", modelItem, sn)
 	}
 	vals := make([]any, md.ColumnPtrsCount())
 	err := md.WalkColumnPtrs(func(i int, fd *FieldDescription) (e error) {
@@ -35,9 +35,9 @@ func (sr *PgStore) ModelObjectFrom(modelItem Storable) (ModelObject, error) {
 		return
 	})
 	if err != nil {
-		return ModelObject{}, err
+		return nil, err
 	}
-	return ModelObject{
+	return &ModelObject{
 		vals: vals,
 		md:   md,
 	}, nil
