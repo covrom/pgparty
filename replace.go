@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"reflect"
 	"runtime"
 	"strings"
-
-	"github.com/covrom/pgparty/utils"
 )
 
 func Replace[T Storable](ctx context.Context, modelItem T, skipFields ...string) error {
@@ -42,6 +39,11 @@ func (sr *PgStore) Replace(ctx context.Context, modelItem Storable, skipFields .
 		cols := make([]string, 0, md.ColumnPtrsCount())
 		vals := make([]interface{}, 0, md.ColumnPtrsCount())
 
+		// TODO:
+		// insert into tablename
+		// select *
+		// from jsonb_populate_recordset(null :: tablename, $1 :: jsonb)
+
 		for i := 0; i < md.ColumnPtrsCount(); i++ {
 			fd := md.ColumnPtr(i)
 			if fd.SkipReplace || !fd.IsStored() {
@@ -57,12 +59,12 @@ func (sr *PgStore) Replace(ctx context.Context, modelItem Storable, skipFields .
 			if fnd {
 				continue
 			}
-			fv, err := utils.GetFieldValueByName(reflect.Indirect(reflect.ValueOf(modelItem)), fd.FieldName)
+			fv, err := srx.FieldByFD(modelItem, fd)
 			if err != nil {
 				return err
 			}
 			cols = append(cols, fd.DatabaseName)
-			vals = append(vals, fv.Interface())
+			vals = append(vals, fv)
 		}
 
 		fillers := strings.Join(strings.Split(strings.Repeat("?", len(vals)), ""), ",")
