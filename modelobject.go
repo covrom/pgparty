@@ -56,6 +56,18 @@ func (sr *PgStore) ModelObjectFrom(modelItem Modeller) (*ModelObject, error) {
 	}, nil
 }
 
+func (m *ModelObject) TypeName() TypeName {
+	return m.md.TypeName()
+}
+
+func (m *ModelObject) DatabaseName() string {
+	return m.md.DatabaseName()
+}
+
+func (m *ModelObject) Fields() []FieldDescription {
+	return m.md.Modeller().Fields()
+}
+
 func (m *ModelObject) FieldID() any {
 	if m.md.IdField() == nil {
 		return nil
@@ -287,4 +299,11 @@ func (m *ModelObject) Scan(value interface{}) error {
 	})
 
 	return nil
+}
+
+func (m *ModelObject) Walk(f func(fd *FieldDescription, value interface{})) {
+	for fdi, v := range m.vals {
+		fd := m.md.ColumnPtr(fdi)
+		f(fd, v)
+	}
 }
