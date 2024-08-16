@@ -7,13 +7,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 
+	"github.com/jmoiron/sqlx"
 	jsoniter "github.com/json-iterator/go"
 )
 
 type ModelObject struct {
-	vals []any
-	md   *ModelDesc
+	vals           []any
+	md             *ModelDesc
+	lastColScanner sqlx.ColScanner
+	cols           []string
+	fds            []*FieldDescription
 }
 
 func NewModelObject(md *ModelDesc) *ModelObject {
@@ -257,7 +262,7 @@ func (m *ModelObject) Value() (driver.Value, error) {
 }
 
 // sql database method for json_agg(expression)
-func (m *ModelObject) Scan(value interface{}) error {
+func (m *ModelObject) Scan(value any) error {
 	if m.md == nil {
 		return fmt.Errorf("ModelObject: model description is empty")
 	}
@@ -306,4 +311,56 @@ func (m *ModelObject) Walk(f func(fd *FieldDescription, value interface{})) {
 		fd := m.md.ColumnPtr(fdi)
 		f(fd, v)
 	}
+}
+
+func (mo *ModelObject) RowScan(r sqlx.ColScanner) error {
+	if mo.lastColScanner != r {
+		columns, err := r.Columns()
+		if err != nil {
+			return err
+		}
+		mo.cols = columns
+		mo.fds = make([]*FieldDescription, len(columns))
+		for i, column := range columns {
+			ip := strings.IndexByte(column, '.')
+			if ip >= 0 {
+				column = column[ip+1:]
+			}
+
+			mo.fds[i] = nil
+			if fd, err := mo.md.ColumnByDatabaseName(column); err == nil {
+				mo.fds[i] = fd
+			}
+		}
+		mo.lastColScanner = r
+	}
+
+	values := make([]any, len(mo.cols))
+
+	for i := range values {
+		if mo.fds[i] == nil {
+			values[i] = &BlackHole{}
+		} else {
+			values[i] = reflect.New(mo.fds[i].ElemType).Interface()
+		}
+	}
+
+	err := r.Scan(values...)
+	if err != nil {
+		return err
+	}
+
+	for i, fd := range mo.fds {
+		if fd == nil {
+			continue
+		}
+
+		if _, ok := values[i].(*BlackHole); ok {
+			mo.vals[fd.Idx] = nil
+		} else {
+			mo.vals[fd.Idx] = reflect.ValueOf(values[i]).Elem().Interface()
+		}
+	}
+
+	return r.Err()
 }

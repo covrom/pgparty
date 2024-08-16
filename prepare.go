@@ -109,7 +109,7 @@ func (sr *PgStore) PrepGet(ctx context.Context, query string, dest interface{}, 
 
 		v := reflect.New(rt).Interface().(RowScanner)
 
-		if err := v.Scan(rows, ""); err != nil {
+		if err := v.RowScan(rows); err != nil {
 			return err
 		}
 		rv.Set(reflect.ValueOf(v).Elem())
@@ -137,7 +137,7 @@ func Select[T any](ctx context.Context, query string, dest *[]T, args ...interfa
 }
 
 type RowScanner interface {
-	Scan(rows sqlx.ColScanner, prefix string) error
+	RowScan(rows sqlx.ColScanner) error
 }
 
 func (sr *PgStore) PrepSelect(ctx context.Context, query string, dest interface{}, args ...interface{}) error {
@@ -185,7 +185,7 @@ func (sr *PgStore) PrepSelect(ctx context.Context, query string, dest interface{
 		defer rows.Close()
 		for rows.Next() {
 			v := reflect.New(rt).Interface().(RowScanner)
-			err := v.Scan(rows, "")
+			err := v.RowScan(rows)
 			if err != nil {
 				return err
 			}
