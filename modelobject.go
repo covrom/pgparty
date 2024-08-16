@@ -28,7 +28,7 @@ func NewModelObject(md *ModelDesc) *ModelObject {
 	}
 }
 
-func ModelObjectFrom[T Storable](ctx context.Context, modelItem T) (*ModelObject, error) {
+func ModelObjectFrom[T Modeller](ctx context.Context, modelItem T) (*ModelObject, error) {
 	s, err := ShardFromContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("ModelObjectFrom: %w", err)
@@ -36,7 +36,7 @@ func ModelObjectFrom[T Storable](ctx context.Context, modelItem T) (*ModelObject
 	return s.Store.ModelObjectFrom(modelItem)
 }
 
-func (sr *PgStore) ModelObjectFrom(modelItem Storable) (*ModelObject, error) {
+func (sr *PgStore) ModelObjectFrom(modelItem Modeller) (*ModelObject, error) {
 	sn := sr.Schema()
 	md, ok := sr.GetModelDescription(modelItem)
 	if !ok {

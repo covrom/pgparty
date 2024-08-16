@@ -21,17 +21,17 @@ func IsJsonView(v interface{}) bool {
 	return ok
 }
 
-type JsonViewer[T Storable] interface {
+type JsonViewer[T Modeller] interface {
 	JsonView() *JsonView[T]
 }
 
-type JsonView[T Storable] struct {
+type JsonView[T Modeller] struct {
 	V      T
 	MD     *ModelDesc
 	Filled []*FieldDescription
 }
 
-var _ aJsonViewer = &JsonView[Storable]{}
+var _ aJsonViewer = &JsonView[Modeller]{}
 
 func (mo *JsonView[T]) aJsonView() {}
 
@@ -39,7 +39,7 @@ func (mo *JsonView[T]) Valid() bool {
 	return len(mo.Filled) > 0 && mo.MD != nil
 }
 
-func NewJsonView[T Storable]() (*JsonView[T], error) {
+func NewJsonView[T Modeller]() (*JsonView[T], error) {
 	val := *(new(T))
 	md, err := (MD[T]{Val: val}).MD()
 	if err != nil {

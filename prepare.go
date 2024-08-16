@@ -45,7 +45,7 @@ func Get[T any](ctx context.Context, query string, dest *T, args ...interface{})
 	return s.Store.PrepGet(ctx, query, dest, args...)
 }
 
-func GetByID[T Storable](ctx context.Context, dest *T, id interface{}) error {
+func GetByID[T Modeller](ctx context.Context, dest *T, id interface{}) error {
 	s, err := ShardFromContext(ctx)
 	if err != nil {
 		_, file, no, ok := runtime.Caller(1)

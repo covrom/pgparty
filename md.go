@@ -3,26 +3,26 @@ package pgparty
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sync"
 )
 
+type TypeName string
+
 type mdMap struct {
 	sync.RWMutex
-	m map[reflect.Type]*ModelDesc
+	m map[TypeName]*ModelDesc
 }
 
 var mdRepo = mdMap{
-	m: make(map[reflect.Type]*ModelDesc),
+	m: make(map[TypeName]*ModelDesc),
 }
 
-type MD[T Storable] struct {
-	Val T // can be Storable if struct or Modeller if custom type
+type MD[T Modeller] struct {
+	Val T
 }
 
 func (m MD[T]) MD() (*ModelDesc, error) {
-	value := reflect.Indirect(reflect.ValueOf(m.Val))
-	modelType := value.Type()
+	modelType := m.Val.TypeName()
 	mdRepo.RLock()
 	if ret, ok := mdRepo.m[modelType]; ok {
 		mdRepo.RUnlock()
@@ -56,7 +56,7 @@ func Register[T ModelDescriber](sh Shard, m T) error {
 		return fmt.Errorf("init ModelDesc failed: %w", err)
 	}
 
-	sh.Store.modelDescriptions[md.ModelType()] = md
+	sh.Store.modelDescriptions[md.TypeName()] = md
 
 	mdrepls, rpls, err := md.ReplaceEntries(sh.Store.Schema())
 	if err != nil {
@@ -71,8 +71,7 @@ func Register[T ModelDescriber](sh Shard, m T) error {
 
 type ModelDesc struct {
 	m         Modeller
-	modelType reflect.Type
-	typeName  string
+	typeName  TypeName
 	storeName string
 
 	idField        *FieldDescription
@@ -96,16 +95,12 @@ func (md ModelDesc) Modeller() Modeller {
 	return md.m
 }
 
-func (md ModelDesc) ModelType() reflect.Type {
-	return md.modelType
-}
-
 func (md ModelDesc) DatabaseName() string {
 	return md.storeName
 }
 
-func (md ModelDesc) TypeName() string {
-	return md.typeName // utils.GetUniqTypeName(md.modelType)
+func (md ModelDesc) TypeName() TypeName {
+	return md.typeName
 }
 
 func (md *ModelDesc) IdField() *FieldDescription        { return md.idField }
@@ -162,7 +157,7 @@ func viewAttrs(m any) (isView, isMaterialized bool, viewQuery string) {
 func (md ModelDesc) ColumnByFieldName(fieldName string) (*FieldDescription, error) {
 	field, ok := md.columnByFieldName[fieldName]
 	if !ok {
-		return nil, fmt.Errorf("ColumnByFieldName no such field: %s.%s", md.modelType.Name(), fieldName)
+		return nil, fmt.Errorf("ColumnByFieldName no such field: %s.%s", md.TypeName(), fieldName)
 	}
 	return field, nil
 }
@@ -172,7 +167,7 @@ func (md ModelDesc) ColumnsByFieldNames(fieldNames ...string) (res []*FieldDescr
 	for _, fieldName := range fieldNames {
 		field, ok := md.columnByFieldName[fieldName]
 		if !ok {
-			panic(fmt.Sprintf("ColumnsByFieldNames no such field: %s.%s", md.modelType.Name(), fieldName))
+			panic(fmt.Sprintf("ColumnsByFieldNames no such field: %s.%s", md.TypeName(), fieldName))
 		}
 		res = append(res, field)
 	}
@@ -182,7 +177,7 @@ func (md ModelDesc) ColumnsByFieldNames(fieldNames ...string) (res []*FieldDescr
 func (md ModelDesc) ColumnByJsonName(jsonName string) (*FieldDescription, error) {
 	field, ok := md.columnByJsonName[jsonName]
 	if !ok {
-		return nil, fmt.Errorf("ColumnByJsonName no such field: %s.%s", md.modelType.Name(), jsonName)
+		return nil, fmt.Errorf("ColumnByJsonName no such field: %s.%s", md.TypeName(), jsonName)
 	}
 	return field, nil
 }
@@ -190,13 +185,12 @@ func (md ModelDesc) ColumnByJsonName(jsonName string) (*FieldDescription, error)
 func (md ModelDesc) ColumnByDatabaseName(storeName string) (*FieldDescription, error) {
 	field, ok := md.columnByName[storeName]
 	if !ok {
-		return nil, fmt.Errorf("ColumnByStoreName no such field: %s.%s", md.modelType.Name(), storeName)
+		return nil, fmt.Errorf("ColumnByStoreName no such field: %s.%s", md.TypeName(), storeName)
 	}
 	return field, nil
 }
 
 func (md *ModelDesc) Init(m Modeller) error {
-	md.modelType = m.ReflectType()
 	md.typeName = m.TypeName()
 	md.storeName = m.DatabaseName()
 
@@ -251,18 +245,21 @@ func (md *ModelDesc) Init(m Modeller) error {
 	return nil
 }
 
-// m can be Storable if struct or Modeller if custom type
-func NewModelDescription[T Storable](m T) (*ModelDesc, error) {
+func NewStructModelDescription[T any](m T) (*ModelDesc, error) {
 	modelDescription := ModelDesc{}
-
-	var md Modeller
-	if mm, ok := any(m).(Modeller); ok {
-		md = mm
-	} else {
-		md = StructModel{M: m}
+	md := StructModel[T]{M: m}
+	if err := modelDescription.Init(md); err != nil {
+		return nil, fmt.Errorf("init ModelDesc failed: %s", err)
 	}
 
-	if err := modelDescription.Init(md); err != nil {
+	return &modelDescription, nil
+}
+
+// m can be Storable if struct or Modeller if custom type
+func NewModelDescription[T Modeller](m T) (*ModelDesc, error) {
+	modelDescription := ModelDesc{}
+
+	if err := modelDescription.Init(m); err != nil {
 		return nil, fmt.Errorf("init ModelDesc failed: %s", err)
 	}
 
@@ -271,13 +268,4 @@ func NewModelDescription[T Storable](m T) (*ModelDesc, error) {
 
 type FieldDescriber interface {
 	FD() *FieldDescription
-}
-
-func (md ModelDesc) CreateSlicePtr() any {
-	slt := reflect.SliceOf(md.modelType)
-	return reflect.New(slt).Interface()
-}
-
-func (md ModelDesc) CreateElemPtr() any {
-	return reflect.New(md.modelType).Interface()
 }

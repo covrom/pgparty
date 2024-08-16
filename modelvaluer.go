@@ -16,7 +16,7 @@ type ModelValuer interface {
 
 // get field value by struct field name
 // defval must be Model{}.Field
-func Field[T Storable, F any](ctx context.Context, modelItem T, defval F, fieldName string) (F, error) {
+func Field[T Modeller, F any](ctx context.Context, modelItem T, defval F, fieldName string) (F, error) {
 	s, err := ShardFromContext(ctx)
 	if err != nil {
 		return defval, fmt.Errorf("FieldT: %w", err)
@@ -29,7 +29,7 @@ func Field[T Storable, F any](ctx context.Context, modelItem T, defval F, fieldN
 }
 
 // get field value by struct field name
-func (sr *PgStore) Field(modelItem Storable, fieldName string) (any, error) {
+func (sr *PgStore) Field(modelItem Modeller, fieldName string) (any, error) {
 	sn := sr.Schema()
 	md, ok := sr.GetModelDescription(modelItem)
 	if !ok {
@@ -42,7 +42,7 @@ func (sr *PgStore) Field(modelItem Storable, fieldName string) (any, error) {
 	return sr.FieldByFD(modelItem, fd)
 }
 
-func (sr *PgStore) FieldByFD(modelItem Storable, fd *FieldDescription) (any, error) {
+func (sr *PgStore) FieldByFD(modelItem Modeller, fd *FieldDescription) (any, error) {
 	if fd == nil {
 		return nil, fmt.Errorf("FieldByFD: fd is nil")
 	}

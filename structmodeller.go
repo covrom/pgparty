@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/covrom/pgparty/utils"
+	"github.com/jmoiron/sqlx"
 )
 
-type StructModel struct {
-	M Storable
+type StructModel[T any] struct {
+	M T
 }
 
-func (s StructModel) ReflectType() reflect.Type {
+func (s StructModel[T]) ReflectType() reflect.Type {
 	_, typ := reflStructType(s.M)
 	return typ
 }
@@ -24,25 +24,31 @@ func reflStructType(m any) (reflect.Value, reflect.Type) {
 	return value, value.Type()
 }
 
-func (s StructModel) TypeName() string {
-	return utils.GetUniqTypeName(s.ReflectType())
+func (s StructModel[T]) TypeName() TypeName {
+	return TypeName(s.ReflectType().Name())
 }
 
-func (s StructModel) DatabaseName() string {
-	return s.M.DatabaseName()
+func (s StructModel[T]) DatabaseName() string {
+	type dnamer interface {
+		DatabaseName() string
+	}
+	if dn, ok := any(s.M).(dnamer); ok {
+		return dn.DatabaseName()
+	}
+	return sqlx.NameMapper(s.ReflectType().Name())
 }
 
-func (s StructModel) ViewQuery() string {
+func (s StructModel[T]) ViewQuery() string {
 	_, _, viewQuery := viewAttrs(s.M)
 	return viewQuery
 }
 
-func (s StructModel) MaterializedView() bool {
+func (s StructModel[T]) MaterializedView() bool {
 	_, isMaterialized, _ := viewAttrs(s.M)
 	return isMaterialized
 }
 
-func (s StructModel) Fields() []FieldDescription {
+func (s StructModel[T]) Fields() []FieldDescription {
 	rv, typ := reflStructType(s.M)
 	columns := make([]FieldDescription, 0, typ.NumField())
 	structFields(rv, &columns)

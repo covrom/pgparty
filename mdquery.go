@@ -10,7 +10,7 @@ type RowsGenerator interface {
 	QueryRows() (*sqlx.Rows, error)
 }
 
-type ModelQueryEngine[T Storable, R RowsGenerator] struct {
+type ModelQueryEngine[T Modeller, R RowsGenerator] struct {
 	result []JsonViewer[T]
 	err    error
 	done   bool

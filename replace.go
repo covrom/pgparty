@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func Replace[T Storable](ctx context.Context, modelItem T, skipFields ...string) error {
+func Replace[T Modeller](ctx context.Context, modelItem T, skipFields ...string) error {
 	s, err := ShardFromContext(ctx)
 	if err != nil {
 		_, file, no, ok := runtime.Caller(1)
@@ -21,7 +21,7 @@ func Replace[T Storable](ctx context.Context, modelItem T, skipFields ...string)
 }
 
 // Replace is "insert or update" operation using ID field as key
-func (sr *PgStore) Replace(ctx context.Context, modelItem Storable, skipFields ...string) error {
+func (sr *PgStore) Replace(ctx context.Context, modelItem Modeller, skipFields ...string) error {
 	// ctx = WithLoggingQuery(ctx)
 	s, err := ShardFromContext(ctx)
 	if err != nil {

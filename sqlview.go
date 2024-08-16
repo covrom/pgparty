@@ -9,11 +9,11 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type SQLViewer[T Storable] interface {
+type SQLViewer[T Modeller] interface {
 	SQLView() *SQLView[T]
 }
 
-type SQLView[T Storable] struct {
+type SQLView[T Modeller] struct {
 	V      T
 	MD     *ModelDesc
 	Filled []*FieldDescription
@@ -23,7 +23,7 @@ func (mo *SQLView[T]) Valid() bool {
 	return len(mo.Filled) > 0 && mo.MD != nil
 }
 
-func NewSQLView[T Storable]() (*SQLView[T], error) {
+func NewSQLView[T Modeller]() (*SQLView[T], error) {
 	val := *(new(T))
 	md, err := (MD[T]{Val: val}).MD()
 	if err != nil {

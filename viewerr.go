@@ -11,15 +11,15 @@ type JsonErr struct {
 	Err error `json:"_err"`
 }
 
-type JsonViewErrer[T Storable] interface {
+type JsonViewErrer[T Modeller] interface {
 	JsonView() JsonViewErr[T]
 }
 
-type SQLViewErrer[T Storable] interface {
+type SQLViewErrer[T Modeller] interface {
 	SQLView() SQLViewErr[T]
 }
 
-type JsonViewErr[T Storable] struct {
+type JsonViewErr[T Modeller] struct {
 	Value *JsonView[T]
 	Err   error `json:"_err,omitempty"`
 }
@@ -48,7 +48,7 @@ func (v JsonViewErr[T]) SQLView() SQLViewErr[T] {
 	}
 }
 
-type SQLViewErr[T Storable] struct {
+type SQLViewErr[T Modeller] struct {
 	Value *SQLView[T]
 	Err   error `json:"_err,omitempty"`
 }

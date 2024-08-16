@@ -50,14 +50,14 @@ func (shs *Shards) AnalyzeAndReplaceQuery(sr *PgStore, query string) (string, ma
 					if mres, ok := mrpls["&"+msch[1]]; ok {
 						mdto, ok := mres["&"+msch[1]]
 						if ok {
-							repl[i] = mdto.To
+							repl[i] = string(mdto)
 						}
 					}
 				}
 			}
 		}
 		if mdto, ok := rpls[prm]; ok {
-			torpl := mdto.To
+			torpl := string(mdto)
 			if pfx == "" && prm[0] == '&' &&
 				qp.query[0] == '&' && !strings.HasPrefix(torpl, schemapfx) {
 				pfx = schemapfx

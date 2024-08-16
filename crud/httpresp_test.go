@@ -18,6 +18,12 @@ type Board struct {
 func (m Board) DatabaseName() string {
 	return "boards"
 }
+func (Board) TypeName() pgparty.TypeName {
+	return pgparty.StructModel[Board]{}.TypeName()
+}
+func (Board) Fields() []pgparty.FieldDescription {
+	return pgparty.StructModel[Board]{}.Fields()
+}
 
 var _ crud.DatabaseListQuerier[Board] = &GetBoardsOrderedQuery{}
 

@@ -41,7 +41,7 @@ func TestJsonViewUnmarshalJSON(t *testing.T) {
 			},
 		},
 	}
-	jv, err := pgparty.NewJsonView[Test]()
+	jv, err := pgparty.NewJsonView[pgparty.StructModel[Test]]()
 	if err != nil {
 		t.Error(err)
 		return
@@ -62,7 +62,7 @@ func TestJsonViewUnmarshalJSON(t *testing.T) {
 }
 
 type BasicModelJsonViewDB struct {
-	DBData *pgparty.JsonView[BasicModel] `db:"jsv"`
+	DBData *pgparty.JsonView[pgparty.StructModel[BasicModel]] `db:"jsv"`
 }
 
 func TestJsonViewBasicUsage(t *testing.T) {
@@ -74,7 +74,7 @@ func TestJsonViewBasicUsage(t *testing.T) {
 
 	shard := shs.SetShard("shard1", db, "shard1")
 
-	if err := pgparty.Register(shard, pgparty.MD[BasicModel]{}); err != nil {
+	if err := pgparty.Register(shard, pgparty.MD[pgparty.StructModel[BasicModel]]{}); err != nil {
 		t.Errorf("pgparty.Register error: %s", err)
 		return
 	}
@@ -84,7 +84,7 @@ func TestJsonViewBasicUsage(t *testing.T) {
 		return
 	}
 
-	el := BasicModel{
+	el := pgparty.StructModel[BasicModel]{M: BasicModel{
 		ID: pgparty.NewUUID[BasicModel](),
 		Data: *pgparty.NewNullJsonB(map[string]any{
 			"field1": "string data",
@@ -93,10 +93,10 @@ func TestJsonViewBasicUsage(t *testing.T) {
 		}),
 		AppXID:   pgparty.NewXID[pgparty.AppXID](),
 		TraceXID: pgparty.NewXID[pgparty.TraceXID](),
-	}
+	}}
 
 	if err := pgparty.WithTxInShard(ctx, shard.ID, func(ctx context.Context) error {
-		return pgparty.Replace[BasicModel](ctx, el)
+		return pgparty.Replace[pgparty.StructModel[BasicModel]](ctx, el)
 	}); err != nil {
 		t.Errorf("pgparty.Replace error: %s", err)
 		return
@@ -107,7 +107,7 @@ func TestJsonViewBasicUsage(t *testing.T) {
 	if err := pgparty.WithTxInShard(ctx, shard.ID, func(ctx context.Context) error {
 		return pgparty.Get[BasicModelJsonViewDB](ctx, `
 		select jsonb_build_object(':Data',:Data, ':AppXID',:AppXID) as jsv from &BasicModel where :ID = ?
-		`, &jv, el.ID)
+		`, &jv, el.M.ID)
 	}); err != nil {
 		t.Errorf("pgparty.Get error: %s", err)
 		return
@@ -119,14 +119,14 @@ func TestJsonViewBasicUsage(t *testing.T) {
 		return
 	}
 
-	md, _ := (pgparty.MD[BasicModel]{}).MD()
+	md, _ := (pgparty.MD[pgparty.StructModel[BasicModel]]{}).MD()
 	fds := md.ColumnsByFieldNames("Data", "AppXID")
 	je := BasicModelJsonViewDB{
-		DBData: &pgparty.JsonView[BasicModel]{
-			V: BasicModel{
-				Data:   el.Data,
-				AppXID: el.AppXID,
-			},
+		DBData: &pgparty.JsonView[pgparty.StructModel[BasicModel]]{
+			V: pgparty.StructModel[BasicModel]{M: BasicModel{
+				Data:   el.M.Data,
+				AppXID: el.M.AppXID,
+			}},
 			MD:     md,
 			Filled: fds,
 		},

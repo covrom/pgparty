@@ -1,15 +1,18 @@
 package pgparty
 
-import "reflect"
-
-// Storable is an interface that the model structure must implement
-type Storable interface {
+// Modeller defines model with fields.
+// You can combine it with Viewable and MaterializedViewable interfaces.
+type Modeller interface {
+	TypeName() TypeName
 	DatabaseName() string
+	Fields() []FieldDescription
+	// optional Viewable
+	// optional MaterializedViewable
 }
 
 // Viewable is an interface that the view-model structure must implement
 type Viewable interface {
-	Storable
+	Modeller
 	ViewQuery() string
 }
 
@@ -17,15 +20,4 @@ type Viewable interface {
 type MaterializedViewable interface {
 	Viewable
 	MaterializedView() bool
-}
-
-// Modeller defines model with fields.
-// You can combine it with Viewable and MaterializedViewable interfaces.
-type Modeller interface {
-	ReflectType() reflect.Type
-	TypeName() string
-	DatabaseName() string
-	Fields() []FieldDescription
-	// optional Viewable
-	// optional MaterializedViewable
 }

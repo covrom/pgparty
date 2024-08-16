@@ -20,7 +20,7 @@ type PgSelect struct {
 	from string
 }
 
-func (ps *PgSelect) Field(model Storable, defval any, fieldName string) *PgSelect {
+func (ps *PgSelect) Field(model Modeller, defval any, fieldName string) *PgSelect {
 	md, ok := ps.st.GetModelDescription(model)
 	if !ok {
 		panic(fmt.Sprintf("model %T is not registered", model))
@@ -35,7 +35,7 @@ func (ps *PgSelect) Field(model Storable, defval any, fieldName string) *PgSelec
 	return ps
 }
 
-func (ps *PgSelect) From(model Storable) *PgSelect {
+func (ps *PgSelect) From(model Modeller) *PgSelect {
 	md, ok := ps.st.GetModelDescription(model)
 	if !ok {
 		panic(fmt.Sprintf("model %T is not registered", model))

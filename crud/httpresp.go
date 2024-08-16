@@ -10,11 +10,11 @@ import (
 	"github.com/go-chi/render"
 )
 
-type DatabaseListQuerier[T pgparty.Storable] interface {
+type DatabaseListQuerier[T pgparty.Modeller] interface {
 	ResponseList() ([]pgparty.JsonViewer[T], error)
 }
 
-func ResponseList[T pgparty.Storable, Q DatabaseListQuerier[T]](w http.ResponseWriter, r *http.Request, q Q) {
+func ResponseList[T pgparty.Modeller, Q DatabaseListQuerier[T]](w http.ResponseWriter, r *http.Request, q Q) {
 	resp, err := q.ResponseList()
 	if err != nil {
 		log.Println(err)

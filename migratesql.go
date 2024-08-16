@@ -170,7 +170,7 @@ func (sr *PgStore) MD2SQLModel(ctx context.Context, md *ModelDesc) (*modelcols.S
 	}
 
 	if len(sqs) == 0 {
-		return nil, fmt.Errorf("sql fields not found in type %v", md.ModelType())
+		return nil, fmt.Errorf("sql fields not found in type %v", md.TypeName())
 	}
 
 	sort.Slice(sqs, func(i, j int) bool {

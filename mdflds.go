@@ -28,11 +28,11 @@ func ModelsAndFields(ctx context.Context, st *PgStore) ([]Mdjs, error) {
 	for _, md := range mds {
 		sn := st.Schema()
 		m := Mdjs{
-			ModelName: "&" + md.ModelType().Name(),
+			ModelName: "&" + string(md.TypeName()),
 			Md:        md,
 		}
 
-		m.Fields = append(m.Fields, MdjsField{":" + md.ModelType().Name() + ".*", "", nil, nil})
+		m.Fields = append(m.Fields, MdjsField{":" + string(md.TypeName()) + ".*", "", nil, nil})
 
 		for i := 0; i < md.ColumnPtrsCount(); i++ {
 			fd := md.ColumnPtr(i)
@@ -41,7 +41,7 @@ func ModelsAndFields(ctx context.Context, st *PgStore) ([]Mdjs, error) {
 			}
 			m.Fields = append(m.Fields,
 				MdjsField{":" + fd.FieldName, fd.DatabaseName, fd.ElemType, fd},
-				MdjsField{":" + md.ModelType().Name() + "." + fd.FieldName, fd.DatabaseName, fd.ElemType, fd})
+				MdjsField{":" + string(md.TypeName()) + "." + fd.FieldName, fd.DatabaseName, fd.ElemType, fd})
 		}
 
 		dbcols := make([]string, 0, 10)
