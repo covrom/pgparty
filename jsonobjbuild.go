@@ -5,10 +5,8 @@ import (
 	"strings"
 )
 
-// создает строку вида json_build_object('jsonFieldName', prefixStructFieldName ...)
-// если берутся поля от модели, то нужно использовать префикс ":".
-// если от именованной таблицы tabl, то нужно использвать префикс "tabl.:"
-// если с префиксом модели, то нужно использвать префикс ":ModelName."
+// Creates json_build_object('jsonFieldName', prefixStructFieldName ...)
+// prefix is ​​the table name ending with a period or something else
 func (sr *Store) JSONBuildObjectSQL(md *ModelDesc, prefix string, onlyStructFieldNames ...string) string {
 	sb := &strings.Builder{}
 	fmt.Fprint(sb, "json_build_object(")
@@ -35,7 +33,7 @@ func (sr *Store) JSONBuildObjectSQL(md *ModelDesc, prefix string, onlyStructFiel
 		}
 		// только хранимые поля
 		if !fd.Skip {
-			fmt.Fprintf(sb, `'%s',%s%s`, fd.JsonName, prefix, fd.FieldName)
+			fmt.Fprintf(sb, `'%s',%s%s`, fd.DatabaseName, prefix, fd.DatabaseName)
 			needComma = true
 		}
 	}
