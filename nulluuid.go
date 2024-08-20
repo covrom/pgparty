@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 )
 
 func init() {
@@ -21,7 +22,8 @@ func (NullUUIDv4) PostgresType() string {
 }
 
 func (NullUUIDv4) PostgresDefaultValue() string {
-	return `null'`
+	var empty UUIDv4
+	return fmt.Sprintf(`'%s'`, empty)
 }
 
 func (u NullUUIDv4) PostgresAllowNull() bool {
