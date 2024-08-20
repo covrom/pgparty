@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/covrom/pgparty"
-	log "github.com/sirupsen/logrus"
 )
 
 type Test struct {
@@ -67,7 +66,8 @@ type BasicModelJsonViewDB struct {
 
 func TestJsonViewBasicUsage(t *testing.T) {
 	if db == nil {
-		log.Fatal("run TestMain before")
+		t.Error("run TestMain before")
+		return
 	}
 
 	shs, ctx := pgparty.NewShards(pgparty.WithLoggingQuery(context.Background()))

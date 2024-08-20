@@ -2,6 +2,8 @@ package pgparty_test
 
 import (
 	"fmt"
+	"log"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -10,7 +12,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
-	log "github.com/sirupsen/logrus"
 )
 
 var db *sqlx.DB
@@ -19,7 +20,8 @@ func TestMain(m *testing.M) {
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
+		slog.Error("Could not connect to docker", "err", err)
+		return
 	}
 
 	// pulls an image, creates a container based on it and runs it

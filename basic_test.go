@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/covrom/pgparty"
-	log "github.com/sirupsen/logrus"
 )
 
 // Model example
@@ -54,7 +53,8 @@ func (BasicView) ViewQuery() string {
 // Test model and view example
 func TestBasicUsage(t *testing.T) {
 	if db == nil {
-		log.Fatal("run TestMain before")
+		t.Error("run TestMain before")
+		return
 	}
 
 	// create shards repository with only one database connect
