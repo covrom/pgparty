@@ -237,6 +237,138 @@ Edit `Field2SQLColumn()` in `migratesql.go` — add a new tag handler similar to
 
 Use `StructModel[T]` — it auto-generates `TypeName()`, `DatabaseName()`, `Fields()` from any struct. The `DatabaseName()` defaults to `sqlx.NameMapper()` (snake_case of struct name) unless the struct implements `DatabaseName()`.
 
+### Loading Hierarchical Data (Normalized Tables with FK)
+
+pgparty has no built-in eager-loading for nested relations. Use **CTE + LEFT JOIN + json_agg** — one query, one scan per table, GROUP BY instead of correlated subqueries.
+
+**Problem:** Three levels of nesting, each level is a separate table with FK to owner.
+
+```
+Parent (table: parents)
+  → []Child    (table: children,      FK: parent_id → parents.id)
+      → []GrandChild (table: grand_children, FK: child_id → children.id)
+```
+
+**Solution:**
+
+```go
+// Domain types — slices hold nested data
+type GrandChild struct {
+    ID   pgparty.UUID[GrandChild] `json:"id"`
+    Name string                  `json:"name"`
+}
+
+type Child struct {
+    ID            pgparty.UUID[Child]    `json:"id"`
+    ParentID      pgparty.UUID[Parent]   `json:"parent_id"`
+    Name          string                 `json:"name"`
+    GrandChildren []GrandChild           `json:"grand_children"`
+}
+
+type Parent struct {
+    ID       pgparty.UUID[Parent] `json:"id"`
+    Name     string               `json:"name"`
+    Children []Child              `json:"children"`
+}
+
+// Row type — intermediate result from SQL
+type ParentRow struct {
+    ID           pgparty.UUID[Parent] `db:"id"`
+    Name         string              `db:"name"`
+    ChildrenJSON pgparty.NullJsonB   `db:"children_json"`
+}
+
+func (r *ParentRow) ToParent() (*Parent, error) {
+    p := &Parent{ID: r.ID, Name: r.Name}
+    if !r.ChildrenJSON.Valid {
+        return p, nil
+    }
+    if err := json.Unmarshal(r.ChildrenJSON.Value, &p.Children); err != nil {
+        return nil, err
+    }
+    return p, nil
+}
+```
+
+**Query template:**
+
+```go
+func LoadParents(ctx context.Context, parentIDs []string) ([]*Parent, error) {
+    query := `
+WITH gc_agg AS (
+    -- Level 3: aggregate grandchildren by child_id
+    SELECT
+        child_id,
+        json_agg(gc ORDER BY gc.id) AS grand_children
+    FROM schema.grand_children gc
+    WHERE gc.child_id IN (
+        SELECT id FROM schema.children WHERE parent_id IN ?
+    )
+    GROUP BY child_id
+),
+c_agg AS (
+    -- Level 2: aggregate children by parent_id, LEFT JOIN grandchildren
+    SELECT
+        c.parent_id,
+        json_agg(
+            json_build_object(
+                'id', c.id,
+                'parent_id', c.parent_id,
+                'name', c.name,
+                'grand_children', COALESCE(gca.grand_children, '[]'::json)
+            ) ORDER BY c.id
+        ) AS children
+    FROM schema.children c
+    LEFT JOIN gc_agg gca ON gca.child_id = c.id
+    WHERE c.parent_id IN ?
+    GROUP BY c.parent_id
+)
+-- Level 1: select parents, LEFT JOIN children
+SELECT
+    p.id, p.name,
+    COALESCE(ca.children, '[]'::json) AS children_json
+FROM schema.parents p
+LEFT JOIN c_agg ca ON ca.parent_id = p.id
+WHERE p.id IN ?
+ORDER BY p.id
+`
+
+    var rows []ParentRow
+    if err := pgparty.Select[ParentRow](ctx, query, &rows,
+        parentIDs, parentIDs, parentIDs); err != nil {
+        return nil, err
+    }
+
+    parents := make([]*Parent, 0, len(rows))
+    for _, r := range rows {
+        p, err := r.ToParent()
+        if err != nil {
+            return nil, err
+        }
+        parents = append(parents, p)
+    }
+    return parents, nil
+}
+```
+
+**Key rules for this pattern:**
+
+1. **Each CTE level aggregates from bottom up** — grandchildren first, then children, then parents
+2. **Use `COALESCE(..., '[]'::json)`** — ensures empty arrays, not nulls, for missing children
+3. **Use `ORDER BY` inside `json_agg`** — deterministic output
+4. **`parentIDs` passed three times** — once per `IN ?` placeholder; `In()` expands each independently
+5. **Intermediate row type** (`ParentRow`) is a plain struct with `NullJsonB` for aggregated columns — not a Modeller
+6. **Convert in Go** — `ToParent()` unmarshals JSON into domain types
+
+**When to use which approach:**
+
+| Scenario | Approach |
+|----------|----------|
+| < 100 parents, simplicity matters | Sequential queries (3x `Select[T]` + map grouping in Go) |
+| Up to 10K rows, balanced | Correlated subqueries with `json_agg` in SELECT clause |
+| > 10K rows, performance critical | **CTE + LEFT JOIN + json_agg** (pattern above) |
+| Deep nesting (> 3 levels) | Custom `RowScanner` or split into 2-3 queries |
+
 ## Code Style
 
 - **Package-level functions** for generic operations: `Select[T]()`, `Get[T]()`, `Replace[T]()`, `Exec()`
